@@ -67,7 +67,8 @@ describe("builtin providers", () => {
 
 		for (const provider of providers) {
 			const list = models.getAllModels(provider.id);
-			expect(list.length).toBeGreaterThan(0);
+			// "vega" ships no baseline: its catalog is fetched by refreshModels.
+			if (provider.id !== "vega") expect(list.length).toBeGreaterThan(0);
 			expect(list.every((m) => m.provider === provider.id)).toBe(true);
 		}
 		expect(getBuiltinModel("radius", "balanced")).toMatchObject({

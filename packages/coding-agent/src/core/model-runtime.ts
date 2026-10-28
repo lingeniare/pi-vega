@@ -227,7 +227,8 @@ export class ModelRuntime implements Models {
 				: new InMemoryCodingAgentModelsStore());
 		const builtinModelDataGeneratedAt = builtinProviderCatalog.getBuiltinModelDataGeneratedAt();
 		const providers = builtinProviderCatalog.builtinProviders().map((provider) => {
-			if (provider.id === "radius") return provider;
+			// Providers with their own dynamic catalogs keep their refreshModels untouched.
+			if (provider.id === "radius" || provider.id === "vega") return provider;
 			// OpenRouter narrows the catalog to the models, limits and prices of the user's key.
 			if (provider.id === "openrouter") {
 				return withPersonalizedCatalog(

@@ -9,6 +9,8 @@ import { DefaultResourceLoader } from "../src/core/resource-loader.ts";
 import { type CreateAgentSessionOptions, createAgentSession, type InlineExtension } from "../src/core/sdk.ts";
 import { SessionManager } from "../src/core/session-manager.ts";
 import { SettingsManager } from "../src/core/settings-manager.ts";
+import { createCodemodeExtension } from "../src/extensions/codemode/index.ts";
+import { createWebExtension } from "../src/extensions/web/index.ts";
 
 type ToolOptions = Pick<CreateAgentSessionOptions, "tools" | "excludeTools" | "noTools" | "customTools">;
 
@@ -29,11 +31,12 @@ describe("defaultTools setting", () => {
 	});
 
 	async function createSession(
-		defaultTools: string[],
+		defaultTools: string[] | undefined,
 		options: ToolOptions = {},
 		extensionFactories: InlineExtension[] = [],
+		model: ReturnType<typeof getModel> = getModel("anthropic", "claude-sonnet-4-5"),
 	) {
-		const settingsManager = SettingsManager.inMemory({ defaultTools });
+		const settingsManager = SettingsManager.inMemory(defaultTools === undefined ? {} : { defaultTools });
 		const resourceLoader = new DefaultResourceLoader({
 			cwd: tempDir,
 			agentDir,
@@ -46,7 +49,7 @@ describe("defaultTools setting", () => {
 			await createAgentSession({
 				cwd: tempDir,
 				agentDir,
-				model: getModel("anthropic", "claude-sonnet-4-5")!,
+				model: model!,
 				settingsManager,
 				sessionManager: SessionManager.inMemory(tempDir),
 				resourceLoader,
@@ -77,6 +80,43 @@ describe("defaultTools setting", () => {
 		expect(session.systemPrompt).toContain("- powershell: Execute PowerShell commands");
 		expect(session.systemPrompt).not.toContain("- bash:");
 		session.dispose();
+	});
+
+	describe("provider default tools", () => {
+		const vegaModel = { ...getModel("anthropic", "claude-sonnet-4-5")!, provider: "vega" };
+		const webExtensions = [createCodemodeExtension(), createWebExtension()];
+
+		it("enables the provider's extra tools for vega sessions", async () => {
+			const session = await createSession(undefined, {}, webExtensions, vegaModel);
+			expect(session.getActiveToolNames()).toEqual([
+				"read",
+				"bash",
+				"edit",
+				"write",
+				"codemode",
+				"web_fetch",
+				"web_search",
+			]);
+			session.dispose();
+		});
+
+		it("keeps provider extras off for other providers", async () => {
+			const session = await createSession(undefined, {}, webExtensions);
+			expect(session.getActiveToolNames()).toEqual(["read", "bash", "edit", "write"]);
+			session.dispose();
+		});
+
+		it("lets -name remove a provider's extra tools", async () => {
+			const session = await createSession(["-codemode", "-web_fetch"], {}, webExtensions, vegaModel);
+			expect(session.getActiveToolNames()).toEqual(["read", "bash", "edit", "write", "web_search"]);
+			session.dispose();
+		});
+
+		it("lets plain defaultTools replace provider extras", async () => {
+			const session = await createSession(["read", "grep"], {}, webExtensions, vegaModel);
+			expect(session.getActiveToolNames()).toEqual(["read", "grep"]);
+			session.dispose();
+		});
 	});
 
 	it("activates an inactive extension tool with +name", async () => {

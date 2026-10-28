@@ -81,9 +81,6 @@ function deepMergeObjects(base: Record<string, unknown>, overrides: Record<strin
 	return result;
 }
 
-/** Tools enabled at startup when `defaultTools` does not change them. */
-export const DEFAULT_TOOL_NAMES: readonly string[] = ["read", "bash", "edit", "write"];
-
 /** Whether a tool selection entry is a `+name` or `-name` modifier. */
 export function isToolModifier(entry: unknown): boolean {
 	return typeof entry === "string" && (entry.startsWith("+") || entry.startsWith("-"));
@@ -101,6 +98,20 @@ export function getToolListError(entries: readonly string[]): string | undefined
 	const pattern = modifiers.find((entry) => entry.includes("*"));
 	if (pattern) return `+name and -name entries take exact tool names, not patterns: ${pattern}`;
 	return undefined;
+}
+
+/** Tools enabled at startup when `defaultTools` does not change them. */
+export const DEFAULT_TOOL_NAMES: readonly string[] = ["read", "bash", "edit", "write"];
+
+/** Extra startup tools a provider adds on top of {@link DEFAULT_TOOL_NAMES}. */
+export const PROVIDER_DEFAULT_TOOL_NAMES: Record<string, readonly string[]> = {
+	vega: ["codemode", "web_fetch", "web_search"],
+};
+
+/** The startup tool selection for a provider: the shared defaults plus its extras. */
+export function defaultToolNamesForProvider(provider: string | undefined): readonly string[] {
+	const extra = provider ? PROVIDER_DEFAULT_TOOL_NAMES[provider] : undefined;
+	return extra ? [...DEFAULT_TOOL_NAMES, ...extra] : DEFAULT_TOOL_NAMES;
 }
 
 /**
@@ -131,12 +142,12 @@ function mergeDefaultTools(base: string[] | undefined, overrides: string[] | und
 }
 
 /**
- * Resolve a merged `defaultTools` list: plain names replace `DEFAULT_TOOL_NAMES`, then `+name` adds
+ * Resolve a merged `defaultTools` list: plain names replace `base`, then `+name` adds
  * and `-name` removes a tool, in list order.
  */
-function resolveDefaultTools(entries: string[]): string[] {
+function resolveDefaultTools(entries: string[], base: readonly string[] = DEFAULT_TOOL_NAMES): string[] {
 	const plain = entries.filter((entry) => !isToolModifier(entry));
-	return applyToolModifiers(plain.length > 0 || entries.length === 0 ? plain : DEFAULT_TOOL_NAMES, entries);
+	return applyToolModifiers(plain.length > 0 || entries.length === 0 ? plain : base, entries);
 }
 
 /** Deep merge settings: project/overrides take precedence, nested objects merge recursively */
@@ -1353,11 +1364,17 @@ export class SettingsManager {
 		return this.settings.enabledModels;
 	}
 
-	/** The resolved `defaultTools` selection, or undefined when no settings layer sets it. */
-	getDefaultTools(): string[] | undefined {
+	/**
+	 * The resolved `defaultTools` selection, or undefined when no settings layer sets it.
+	 * `baseTools` is the provider's default selection for `+name`/`-name`-only lists.
+	 */
+	getDefaultTools(baseTools: readonly string[] = DEFAULT_TOOL_NAMES): string[] | undefined {
 		const tools = this.settings.defaultTools;
 		if (tools === undefined) return undefined;
-		return resolveDefaultTools(Array.isArray(tools) ? tools.filter((tool) => typeof tool === "string") : []);
+		return resolveDefaultTools(
+			Array.isArray(tools) ? tools.filter((tool) => typeof tool === "string") : [],
+			baseTools,
+		);
 	}
 
 	setEnabledModels(patterns: string[] | undefined): void {

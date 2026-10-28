@@ -21,6 +21,7 @@ type OAuthFlowLoaders = {
 	meta: () => OAuthAuth | Promise<OAuthAuth>;
 	xai: () => OAuthAuth | Promise<OAuthAuth>;
 	radius: (options: { name: string; gateway: string }) => OAuthAuth | Promise<OAuthAuth>;
+	vega: () => OAuthAuth | Promise<OAuthAuth>;
 };
 
 let bundledLoaders: OAuthFlowLoaders | undefined;
@@ -77,4 +78,9 @@ export const loadRadiusOAuth = async (options: { name: string; gateway: string }
 			createRadiusOAuth: (input: { name: string; gateway: string }) => OAuthAuth;
 		}
 	).createRadiusOAuth(options);
+};
+
+export const loadVegaOAuth = async (): Promise<OAuthAuth> => {
+	if (bundledLoaders) return bundledLoaders.vega();
+	return ((await importOAuthModule("./vega.ts")) as { vegaOAuth: OAuthAuth }).vegaOAuth;
 };

@@ -133,7 +133,7 @@ import {
 import {
 	applyToolModifiers,
 	type CacheWarmingMode,
-	DEFAULT_TOOL_NAMES,
+	defaultToolNamesForProvider,
 	type SettingsManager,
 } from "./settings-manager.ts";
 import type { SlashCommandInfo } from "./slash-commands.ts";
@@ -264,7 +264,7 @@ export interface AgentSessionConfig {
 	modelRuntime: ModelRuntime;
 	/** Keeps the prompt cache entry of the last session request warm. */
 	cacheWarmer?: Pick<CacheWarmer, "cancel" | "status" | "onAgentSettled" | "onModeChanged" | "onWarmed">;
-	/** Initial active built-in tool names. Default: [read, bash, edit, write] */
+	/** Initial active built-in tool names. Default: the provider's defaults ([read, bash, edit, write] plus extras, such as [codemode, web_fetch, web_search] for vega) */
 	initialActiveToolNames?: string[];
 	/**
 	 * Whether the initial tools come from the `defaultTools` setting. When true, a resumed session
@@ -3714,7 +3714,7 @@ export class AgentSession {
 
 		const defaultActiveToolNames = this._baseToolsOverride
 			? Object.keys(this._baseToolsOverride)
-			: ["read", "bash", "edit", "write"];
+			: [...defaultToolNamesForProvider(this.agent.state.model?.provider)];
 		const baseActiveToolNames = options.activeToolNames ?? defaultActiveToolNames;
 		this._refreshToolRegistry({
 			activeToolNames: baseActiveToolNames,
@@ -3727,13 +3727,14 @@ export class AgentSession {
 		const previousFlagValues = oldRunner.getFlagValues();
 		await emitSessionShutdownEvent(oldRunner, { type: "session_shutdown", reason: "reload" });
 		oldRunner.invalidate();
-		const getDefaultTools = () =>
-			this._usesDefaultTools
-				? applyToolModifiers(
-						this.settingsManager.getDefaultTools() ?? DEFAULT_TOOL_NAMES,
-						this._defaultToolModifiers,
-					)
-				: [];
+		const getDefaultTools = () => {
+			if (!this._usesDefaultTools) return [];
+			const providerDefaults = defaultToolNamesForProvider(this.agent.state.model?.provider);
+			return applyToolModifiers(
+				this.settingsManager.getDefaultTools(providerDefaults) ?? providerDefaults,
+				this._defaultToolModifiers,
+			);
+		};
 		const previousDefaultTools = new Set(getDefaultTools());
 		await this.settingsManager.reload();
 		this.syncQueueModesFromSettings();
