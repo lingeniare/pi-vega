@@ -3,6 +3,7 @@ dist/
 .artifacts/
 *.log
 .DS_Store
+nul
 *.tsbuildinfo
 # packages/*/node_modules/
 packages/*/dist/

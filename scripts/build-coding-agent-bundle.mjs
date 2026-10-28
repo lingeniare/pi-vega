@@ -189,6 +189,7 @@ const lazyEntryPoints = {
 	"openai-codex": join(aiDistDir, "auth", "oauth", "openai-codex.js"),
 	openrouter: join(aiDistDir, "auth", "oauth", "openrouter.js"),
 	radius: join(aiDistDir, "auth", "oauth", "radius.js"),
+	vega: join(aiDistDir, "auth", "oauth", "vega.js"),
 	xai: join(aiDistDir, "auth", "oauth", "xai.js"),
 };
 
