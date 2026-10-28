@@ -9,28 +9,28 @@ For native Windows setup, read [Windows Setup](windows.md). For Android, read [T
 Install Pi with the installer on macOS, Linux, or Windows:
 
 ```bash tab="macOS / Linux"
-curl -fsSL https://pi.dev/install.sh | sh
+curl -fsSL https://vega.codes/pi/install.sh | sh
 ```
 
 ```powershell tab="Windows"
-powershell -c "irm https://pi.dev/install.ps1 | iex"
+powershell -c "irm https://vega.codes/pi/install.ps1 | iex"
 ```
 
-Both installers pin all dependencies and update Pi with `pi update`. Alternatively, install Pi from npm, which does not pin transitive dependencies. This requires Node.js 22.19 or newer:
+Both installers pin all dependencies and update Pi with `pi update`. Alternatively, install Pi from a tarball, which does not pin transitive dependencies. This requires Node.js 22.19 or newer:
 
 ```bash
-npm install -g --ignore-scripts @earendil-works/pi-coding-agent
+npm install -g --ignore-scripts https://vega.codes/pi/releases/latest/pi-coding-agent-latest.tgz
 ```
 
-Pi does not require dependency lifecycle scripts for a normal npm installation.
+The same tarball URL works with `pnpm add -g` and `bun add -g`. Pi does not require dependency lifecycle scripts for a normal npm installation.
 
 With Nix on macOS or Linux, install the latest release from Pi's flake. Nix builds Pi from source:
 
 ```bash
-nix profile add github:earendil-works/pi/stable
+nix profile add github:lingeniare/pi-vega/stable
 ```
 
-Older Nix versions use `nix profile install` instead. Update with `nix profile upgrade pi`; `pi update` cannot update a Nix installation. To pin a release, use a tag such as `github:earendil-works/pi/v1.0.0`.
+Older Nix versions use `nix profile install` instead. Update with `nix profile upgrade pi`; `pi update` cannot update a Nix installation. To pin a release, use a tag such as `github:lingeniare/pi-vega/v1.0.0`.
 
 Verify the installation:
 
@@ -128,7 +128,7 @@ npm uninstall -g @earendil-works/pi-coding-agent
 If you used the installer, run it again and choose **Uninstall Pi**:
 
 ```bash
-curl -fsSL https://pi.dev/install.sh | sh
+curl -fsSL https://vega.codes/pi/install.sh | sh
 ```
 
 If you installed Pi with Nix, run:

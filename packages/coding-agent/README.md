@@ -25,24 +25,24 @@ Use Pi [interactively](docs/usage.md), automate it in [print or JSON mode](docs/
 Install the command-line interface:
 
 ```bash
-curl -fsSL https://pi.dev/install.sh | sh
+curl -fsSL https://vega.codes/pi/install.sh | sh
 ```
 
 On Windows:
 
 ```shell
-powershell -c "irm https://pi.dev/install.ps1 | iex"
+powershell -c "irm https://vega.codes/pi/install.ps1 | iex"
 ```
 
-The installer pins all dependencies and updates Pi with `pi update`. Alternatively, install directly with npm, which does not pin transitive dependencies:
+The installer pins all dependencies and updates Pi with `pi update`. Alternatively, install directly from a tarball, which does not pin transitive dependencies:
 
 ```bash
-npm install -g --ignore-scripts @earendil-works/pi-coding-agent
+npm install -g --ignore-scripts https://vega.codes/pi/releases/latest/pi-coding-agent-latest.tgz
 ```
 
-Pi requires Node.js 22.19 or newer. The macOS, Linux, and Windows installers can install it if needed. Pi does not require dependency lifecycle scripts for a normal npm installation.
+The same tarball URL works with `pnpm add -g` and `bun add -g`. Pi requires Node.js 22.19 or newer. The macOS, Linux, and Windows installers can install it if needed. Pi does not require dependency lifecycle scripts for a normal npm installation.
 
-On macOS and Linux, Nix users can install the latest release with `nix profile add github:earendil-works/pi/stable`. See the [quickstart](docs/quickstart.md#1-install-pi) for updating and pinning releases.
+On macOS and Linux, Nix users can install the latest release with `nix profile add github:lingeniare/pi-vega/stable`. See the [quickstart](docs/quickstart.md#1-install-pi) for updating and pinning releases.
 
 Start Pi in the directory where you want it to work:
 

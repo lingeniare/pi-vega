@@ -2,12 +2,14 @@ import { compare, valid } from "semver";
 import { fetchWithRetry } from "./management-http.ts";
 import { getPiUserAgent } from "./pi-user-agent.ts";
 
-const LATEST_VERSION_URL = "https://pi.dev/api/latest-version";
+const DEFAULT_LATEST_VERSION_URL = "https://vega.codes/pi/api/latest-version";
 const DEFAULT_VERSION_CHECK_TIMEOUT_MS = 10000;
 
 export interface LatestPiRelease {
 	version: string;
 	packageName?: string;
+	/** Full install spec (e.g. a tarball URL) overriding `packageName@version` for self-update. */
+	installSpec?: string;
 	note?: string;
 }
 
@@ -54,8 +56,9 @@ export async function getLatestPiRelease(
 ): Promise<LatestPiRelease | undefined> {
 	if (process.env.PI_OFFLINE) return undefined;
 
+	const latestVersionUrl = process.env.PI_LATEST_VERSION_URL?.trim() || DEFAULT_LATEST_VERSION_URL;
 	const response = await fetchWithRetry(
-		LATEST_VERSION_URL,
+		latestVersionUrl,
 		{
 			headers: {
 				"User-Agent": getPiUserAgent(currentVersion),
@@ -72,6 +75,7 @@ export async function getLatestPiRelease(
 	const data = (await response.json()) as {
 		packageName?: unknown;
 		version?: unknown;
+		installSpec?: unknown;
 		note?: unknown;
 	};
 	if (typeof data.version !== "string" || !data.version.trim()) {
@@ -79,10 +83,13 @@ export async function getLatestPiRelease(
 	}
 	const packageName =
 		typeof data.packageName === "string" && data.packageName.trim() ? data.packageName.trim() : undefined;
+	const installSpec =
+		typeof data.installSpec === "string" && data.installSpec.trim() ? data.installSpec.trim() : undefined;
 	const note = typeof data.note === "string" && data.note.trim() ? data.note.trim() : undefined;
 	return {
 		version: data.version.trim(),
 		packageName,
+		...(installSpec ? { installSpec } : {}),
 		...(note ? { note } : {}),
 	};
 }

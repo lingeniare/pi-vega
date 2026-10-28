@@ -27,7 +27,24 @@ A fork of [Pi](https://github.com/earendil-works/pi) — the minimal, extensible
 
 ## Installation
 
-Requires Node.js 22.19 or newer. The fork is installed from source:
+Installer (managed install with pinned dependencies and `pi update`):
+
+```bash
+curl -fsSL https://vega.codes/pi/install.sh | sh
+```
+
+```powershell
+powershell -c "irm https://vega.codes/pi/install.ps1 | iex"
+```
+
+Or with a package manager via tarball URL (requires Node.js 22.19+):
+
+```bash
+npm install -g --ignore-scripts https://vega.codes/pi/releases/latest/pi-coding-agent-latest.tgz
+# or: pnpm add -g / bun add -g — same URL
+```
+
+From source, for development:
 
 ```bash
 git clone https://github.com/lingeniare/pi-vega.git
@@ -36,18 +53,11 @@ npm install --ignore-scripts
 npm run build
 ```
 
-Run:
+Run from source:
 
 ```bash
 ./pi-test.sh    # Linux / macOS
 pi-test.bat     # Windows
-```
-
-To get a global `pi` command:
-
-```bash
-cd packages/coding-agent
-npm install -g .
 ```
 
 Sign in to VEGA and pick a model:

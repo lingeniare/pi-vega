@@ -27,7 +27,24 @@
 
 ## Установка
 
-Нужен Node.js 22.19 или новее. Форк ставится из исходников:
+Инсталлер (managed-установка с пином зависимостей и `pi update`):
+
+```bash
+curl -fsSL https://vega.codes/pi/install.sh | sh
+```
+
+```powershell
+powershell -c "irm https://vega.codes/pi/install.ps1 | iex"
+```
+
+Либо через пакетный менеджер по tarball-URL (нужен Node.js 22.19+):
+
+```bash
+npm install -g --ignore-scripts https://vega.codes/pi/releases/latest/pi-coding-agent-latest.tgz
+# или: pnpm add -g / bun add -g — тот же URL
+```
+
+Из исходников для разработки:
 
 ```bash
 git clone https://github.com/lingeniare/pi-vega.git
@@ -36,18 +53,11 @@ npm install --ignore-scripts
 npm run build
 ```
 
-Запуск:
+Запуск из исходников:
 
 ```bash
 ./pi-test.sh    # Linux / macOS
 pi-test.bat     # Windows
-```
-
-Чтобы получить глобальную команду `pi`:
-
-```bash
-cd packages/coding-agent
-npm install -g .
 ```
 
 Залогиньтесь в VEGA и выберите модель:

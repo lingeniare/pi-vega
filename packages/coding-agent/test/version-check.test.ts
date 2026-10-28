@@ -42,13 +42,13 @@ describe("version checks", () => {
 		await expect(checkForNewPiVersion("1.2.2")).resolves.toEqual({ version: "1.2.3" });
 	});
 
-	it("uses the pi.dev version check api with a pi user agent", async () => {
+	it("uses the vega.codes version check api with a pi user agent", async () => {
 		const fetchMock = vi.fn(async () => Response.json({ version: "1.2.4" }));
 		vi.stubGlobal("fetch", fetchMock);
 
 		await expect(getLatestPiVersion("1.2.3")).resolves.toBe("1.2.4");
 		expect(fetchMock).toHaveBeenCalledWith(
-			"https://pi.dev/api/latest-version",
+			"https://vega.codes/pi/api/latest-version",
 			expect.objectContaining({
 				headers: expect.objectContaining({
 					"User-Agent": expect.stringMatching(/^pi\/1\.2\.3 /),
@@ -94,6 +94,7 @@ describe("version checks", () => {
 			Response.json({
 				packageName: "@new-scope/pi",
 				version: "1.2.4",
+				installSpec: "https://vega.codes/pi/releases/1.2.4/pi-coding-agent-1.2.4.tgz",
 			}),
 		);
 		vi.stubGlobal("fetch", fetchMock);
@@ -101,6 +102,7 @@ describe("version checks", () => {
 		await expect(getLatestPiRelease("1.2.3")).resolves.toEqual({
 			packageName: "@new-scope/pi",
 			version: "1.2.4",
+			installSpec: "https://vega.codes/pi/releases/1.2.4/pi-coding-agent-1.2.4.tgz",
 		});
 	});
 

@@ -48,7 +48,7 @@ export type PackageCommand = "install" | "remove" | "update" | "list";
 
 type UpdateTarget = { type: "all" } | { type: "self" } | { type: "extensions"; source?: string } | { type: "models" };
 
-const DEFAULT_INSTALLER_API_BASE = "https://pi.dev/api/installer/releases";
+const DEFAULT_INSTALLER_API_BASE = "https://vega.codes/pi/api/installer/releases";
 const MANAGED_INSTALL_MARKER = "managed-install.json";
 const MANAGED_RELEASE_VERSION_RE = /^\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?(?:\+[0-9A-Za-z.-]+)?$/;
 
@@ -697,7 +697,7 @@ async function getSelfUpdatePlan(force: boolean): Promise<SelfUpdatePlan> {
 	}
 
 	const packageName = latestRelease.packageName ?? PACKAGE_NAME;
-	const installSpec = `${packageName}@${latestRelease.version}`;
+	const installSpec = latestRelease.installSpec ?? `${packageName}@${latestRelease.version}`;
 	if (force || packageName !== PACKAGE_NAME || isNewerPackageVersion(latestRelease.version, VERSION)) {
 		return {
 			packageName,
@@ -1130,8 +1130,8 @@ export async function handlePackageCommand(
 					if (installMethod === "npm") {
 						const installerCommand =
 							process.platform === "win32"
-								? 'powershell -c "irm https://pi.dev/install.ps1 | iex"'
-								: "curl -fsSL https://pi.dev/install.sh | sh";
+								? 'powershell -c "irm https://vega.codes/pi/install.ps1 | iex"'
+								: "curl -fsSL https://vega.codes/pi/install.sh | sh";
 						console.log();
 						console.log(chalk.yellow(`This npm installation of ${APP_NAME} does not pin its dependencies.`));
 						console.log(chalk.yellow("Run the installer to migrate to a managed installation that does:"));
