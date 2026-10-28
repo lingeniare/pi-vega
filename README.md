@@ -25,8 +25,6 @@
 - **Без аналитики и трекинга** — телеметрия и аналитика выключены по умолчанию
 - **Остальной функционал Pi не затронут** — расширения, скиллы, темы, шаблоны и все провайдеры апстрима на месте
 
-Подробности интеграции — в [vega.md](vega.md).
-
 ## Установка
 
 Нужен Node.js 22.19 или новее. Форк ставится из исходников:
@@ -66,7 +64,10 @@ pi
   <a href="https://pi.dev/docs/latest/settings#network-and-retries"><img alt="Документация Pi" src="https://img.shields.io/badge/Pi-%D0%94%D0%BE%D0%BA%D1%83%D0%BC%D0%B5%D0%BD%D1%82%D0%B0%D1%86%D0%B8%D1%8F-1F2937?style=for-the-badge" /></a>
   <a href="https://vega.codes"><img alt="vega.codes" src="https://img.shields.io/badge/vega.codes-%D0%BE%D1%81%D0%BD%D0%BE%D0%B2%D0%BD%D0%BE%D0%B9_%D0%BF%D1%80%D0%BE%D0%B5%D0%BA%D1%82-6E56CF?style=for-the-badge" /></a>
   <a href="https://api.vega.chat"><img alt="api.vega.chat" src="https://img.shields.io/badge/api.vega.chat-%D0%98%D0%98_%D0%BF%D1%80%D0%BE%D0%B2%D0%B0%D0%B9%D0%B4%D0%B5%D1%80-0EA5E9?style=for-the-badge" /></a>
+</p>
+<p>
   <a href="https://t.me/ingeniare"><img alt="Telegram" src="https://img.shields.io/badge/Telegram-%D1%87%D0%B0%D1%82-2CA5E0?style=for-the-badge&logo=telegram&logoColor=white" /></a>
+  <a href="mailto:mail@vega.chat"><img alt="Email" src="https://img.shields.io/badge/Email-mail%40vega.chat-DC2626?style=for-the-badge" /></a>
 </p>
 
 ## Сообщество
@@ -74,6 +75,7 @@ pi
 Проект открытый: issues и pull requests приветствуются.
 
 - Telegram: [@ingeniare](https://t.me/ingeniare) — вопросы, баги, идеи
+- Email: [mail@vega.chat](mailto:mail@vega.chat)
 - Документация Pi: [pi.dev/docs](https://pi.dev/docs/latest) — применима к форку целиком
 - Апстрим: [earendil-works/pi](https://github.com/earendil-works/pi) — форк регулярно синхронизируется с ним
 

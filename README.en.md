@@ -25,8 +25,6 @@ A fork of [Pi](https://github.com/earendil-works/pi) — the minimal, extensible
 - **No analytics or tracking** — telemetry and analytics are off by default
 - **Everything else is untouched** — extensions, skills, themes, prompt templates and all upstream providers work as before
 
-Integration details are in [vega.md](vega.md) (in Russian).
-
 ## Installation
 
 Requires Node.js 22.19 or newer. The fork is installed from source:
@@ -66,7 +64,10 @@ You can also paste the key manually (`/login` → API key → `sk-apivega-...`) 
   <a href="https://pi.dev/docs/latest/settings#network-and-retries"><img alt="Pi docs" src="https://img.shields.io/badge/Pi-Documentation-1F2937?style=for-the-badge" /></a>
   <a href="https://vega.codes"><img alt="vega.codes" src="https://img.shields.io/badge/vega.codes-main_project-6E56CF?style=for-the-badge" /></a>
   <a href="https://api.vega.chat"><img alt="api.vega.chat" src="https://img.shields.io/badge/api.vega.chat-AI_provider-0EA5E9?style=for-the-badge" /></a>
+</p>
+<p>
   <a href="https://t.me/ingeniare"><img alt="Telegram" src="https://img.shields.io/badge/Telegram-chat-2CA5E0?style=for-the-badge&logo=telegram&logoColor=white" /></a>
+  <a href="mailto:mail@vega.chat"><img alt="Email" src="https://img.shields.io/badge/Email-mail%40vega.chat-DC2626?style=for-the-badge" /></a>
 </p>
 
 ## Community
@@ -74,6 +75,7 @@ You can also paste the key manually (`/login` → API key → `sk-apivega-...`) 
 The project is open: issues and pull requests are welcome.
 
 - Telegram: [@ingeniare](https://t.me/ingeniare) — questions, bugs, ideas
+- Email: [mail@vega.chat](mailto:mail@vega.chat)
 - Pi docs: [pi.dev/docs](https://pi.dev/docs/latest) — fully applies to the fork
 - Upstream: [earendil-works/pi](https://github.com/earendil-works/pi) — the fork stays in sync with it
 
