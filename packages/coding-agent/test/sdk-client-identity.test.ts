@@ -93,8 +93,8 @@ describe("createAgentSession client identity", () => {
 		} = {},
 	): Promise<SimpleStreamOptions | undefined> {
 		const settingsManager = SettingsManager.create(cwd, agentDir);
-		if (options.telemetryEnabled === false) {
-			settingsManager.setEnableInstallTelemetry(false);
+		if (options.telemetryEnabled !== undefined) {
+			settingsManager.setEnableInstallTelemetry(options.telemetryEnabled);
 		}
 
 		const authStorage = AuthStorage.inMemory({
@@ -139,9 +139,17 @@ describe("createAgentSession client identity", () => {
 		}
 	}
 
-	it("identifies pi with a detailed User-Agent and attribution as a CLI agent", async () => {
+	it("identifies pi with a detailed User-Agent and no attribution by default", async () => {
 		const model = createModel("openrouter", "https://openrouter.ai/api/v1");
 		const options = await captureOptions(model);
+
+		expect(options?.identity).toEqual({ userAgent: "detailed", version: VERSION, attribution: null });
+		expect(getAttributionHeaders(model, options?.identity)).toEqual({});
+	});
+
+	it("adds attribution as a CLI agent when telemetry is enabled", async () => {
+		const model = createModel("openrouter", "https://openrouter.ai/api/v1");
+		const options = await captureOptions(model, { telemetryEnabled: true });
 
 		expect(options?.identity).toEqual({
 			userAgent: "detailed",

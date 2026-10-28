@@ -11,6 +11,7 @@
 ### Changed
 
 - `codemode` is part of the default tool selection on the `vega` provider, so it is active there out of the box. Other providers keep it off until named: enable it with `"defaultTools": ["+codemode"]`, disable on vega with `"-codemode"` or `pi --tools -codemode`
+- Install telemetry is now off by default. The anonymous install/update ping and provider attribution headers (OpenRouter, NVIDIA NIM, OpenCode) are only sent after opting in via `/settings`, `enableInstallTelemetry: true` in `settings.json`, or `PI_TELEMETRY=1`. The first-run setup now preselects "Don't share" for analytics.
 - `pi update` for installs from the pi.dev installer no longer passes `--min-release-age=0` to `npm ci`. The release lockfile pins every package, so the flag had no effect, and security scanners that block it stopped the update ([#11262](https://github.com/earendil-works/pi/issues/11262))
 - `/model` and `/scoped-models` now show a model's name next to its ID when the name adds words the ID lacks, such as a renamed `models.json` override ([#5916](https://github.com/earendil-works/pi/issues/5916), [#11347](https://github.com/earendil-works/pi/pull/11347))
 

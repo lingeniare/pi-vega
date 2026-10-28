@@ -33,7 +33,7 @@ const SETUP_LOGO_LINES = ["██████", "██  ██", "████ 
 export class FirstTimeSetupComponent extends Container {
 	private step: "theme" | "analytics" = "theme";
 	private themeIndex: number;
-	private analyticsIndex = 0;
+	private analyticsIndex = ANALYTICS_OPTIONS.findIndex((option) => !option.value);
 	private readonly options: FirstTimeSetupOptions;
 
 	constructor(options: FirstTimeSetupOptions) {
