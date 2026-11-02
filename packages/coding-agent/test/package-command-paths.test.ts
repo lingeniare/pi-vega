@@ -88,7 +88,7 @@ if (process.platform !== "win32") fs.chmodSync(piPath, 0o755);
 		);
 		chmodSync(npmPath, 0o755);
 
-		vi.stubEnv("PI_INSTALLER_API_BASE", "https://example.test/api/installer/releases");
+		vi.stubEnv("PI_INSTALLER_DOWNLOAD_BASE", "https://example.test/releases/download");
 		vi.stubEnv("PI_MANAGED_INSTALL_ROOT", managedRoot);
 		process.env.PI_PACKAGE_DIR = selfPackageDir;
 		process.env.PATH = `${binDir}${delimiter}${originalPath ?? ""}`;
@@ -100,10 +100,10 @@ if (process.platform !== "win32") fs.chmodSync(piPath, 0o755);
 			"fetch",
 			vi.fn(async (input: string | URL | Request) => {
 				const url = typeof input === "string" ? input : input instanceof URL ? input.href : input.url;
-				if (url === "https://vega.codes/pi/api/latest-version") {
+				if (url === "https://github.com/lingeniare/pi-vega/releases/latest/download/installer-release.json") {
 					return Response.json({ packageName: PACKAGE_NAME, version: targetVersion });
 				}
-				const releaseUrl = `https://example.test/api/installer/releases/${targetVersion}`;
+				const releaseUrl = `https://example.test/releases/download/v${targetVersion}`;
 				if (url === `${releaseUrl}/package.json` || url === `${releaseUrl}/package-lock.json`) {
 					return Response.json({});
 				}

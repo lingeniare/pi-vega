@@ -14,9 +14,8 @@ name: Nix
 # `nix run github:earendil-works/pi/stable` runs the latest release.
 
 on:
-  push:
-    tags:
-      - 'v*.*.*'
+  # No tag triggers on this fork: upstream's release flow fast-forwards the
+  # `stable` branch for earendil-works/pi, which does not apply here.
   pull_request:
     branches: [main]
     paths:

@@ -30,17 +30,17 @@ A fork of [Pi](https://github.com/earendil-works/pi) — the minimal, extensible
 Installer (managed install with pinned dependencies and `pi update`):
 
 ```bash
-curl -fsSL https://vega.codes/pi/install.sh | sh
+curl -fsSL https://github.com/lingeniare/pi-vega/releases/latest/download/install.sh | sh
 ```
 
 ```powershell
-powershell -c "irm https://vega.codes/pi/install.ps1 | iex"
+powershell -c "irm https://github.com/lingeniare/pi-vega/releases/latest/download/install.ps1 | iex"
 ```
 
 Or with a package manager via tarball URL (requires Node.js 22.19+):
 
 ```bash
-npm install -g --ignore-scripts https://vega.codes/pi/releases/latest/pi-coding-agent-latest.tgz
+npm install -g --ignore-scripts https://github.com/lingeniare/pi-vega/releases/latest/download/pi-coding-agent-latest.tgz
 # or: pnpm add -g / bun add -g — same URL
 ```
 

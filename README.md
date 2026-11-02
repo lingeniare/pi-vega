@@ -30,17 +30,17 @@
 Инсталлер (managed-установка с пином зависимостей и `pi update`):
 
 ```bash
-curl -fsSL https://vega.codes/pi/install.sh | sh
+curl -fsSL https://github.com/lingeniare/pi-vega/releases/latest/download/install.sh | sh
 ```
 
 ```powershell
-powershell -c "irm https://vega.codes/pi/install.ps1 | iex"
+powershell -c "irm https://github.com/lingeniare/pi-vega/releases/latest/download/install.ps1 | iex"
 ```
 
 Либо через пакетный менеджер по tarball-URL (нужен Node.js 22.19+):
 
 ```bash
-npm install -g --ignore-scripts https://vega.codes/pi/releases/latest/pi-coding-agent-latest.tgz
+npm install -g --ignore-scripts https://github.com/lingeniare/pi-vega/releases/latest/download/pi-coding-agent-latest.tgz
 # или: pnpm add -g / bun add -g — тот же URL
 ```
 

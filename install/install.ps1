@@ -4,10 +4,15 @@ $ErrorActionPreference = "Stop"
 
 $PiPackage = "@earendil-works/pi-coding-agent"
 $PiCmd = "pi"
-$PiInstallerApiBase = if ($env:PI_INSTALLER_API_BASE) { $env:PI_INSTALLER_API_BASE } else { "https://vega.codes/pi/api/installer/releases" }
-# Package spec used for the legacy npm install path: a tarball URL on vega.codes
-# because this fork is not published to an npm registry.
-$PiPackageSpec = if ($env:PI_PACKAGE_SPEC) { $env:PI_PACKAGE_SPEC } else { "https://vega.codes/pi/releases/latest/pi-coding-agent-latest.tgz" }
+# Releases are published as GitHub Release assets on the fork: metadata and the
+# latest tarball under releases/latest/download, versioned manifests and
+# tarballs under releases/download/<tag>.
+$PiReleasesUrl = if ($env:PI_RELEASES_URL) { $env:PI_RELEASES_URL } else { "https://github.com/lingeniare/pi-vega/releases" }
+$PiInstallerMetadataUrl = if ($env:PI_INSTALLER_METADATA_URL) { $env:PI_INSTALLER_METADATA_URL } else { "$PiReleasesUrl/latest/download/installer-release.json" }
+$PiInstallerDownloadBase = if ($env:PI_INSTALLER_DOWNLOAD_BASE) { $env:PI_INSTALLER_DOWNLOAD_BASE } else { "$PiReleasesUrl/download" }
+# Package spec used for the legacy npm install path: a tarball URL on GitHub
+# Releases because this fork is not published to an npm registry.
+$PiPackageSpec = if ($env:PI_PACKAGE_SPEC) { $env:PI_PACKAGE_SPEC } else { "$PiReleasesUrl/latest/download/pi-coding-agent-latest.tgz" }
 $PiManagedInstallMarker = "managed-install.json"
 # Pi publishes npm-shrinkwrap.json, so the explicit installer/reinstaller can
 # bypass npm's release-age gate without reopening transitive dependency ranges.
@@ -1386,7 +1391,7 @@ function Receive-PiManagedInstallArtifacts {
 
   $metadataPath = Join-Path $ManagedStageDir "metadata.json"
   Write-Host "Downloading managed installer release metadata"
-  if (-not (Invoke-DownloadManagedInstallerArtifact "$PiInstallerApiBase/latest" $metadataPath "release metadata")) {
+  if (-not (Invoke-DownloadManagedInstallerArtifact "$PiInstallerMetadataUrl" $metadataPath "release metadata")) {
     return $false
   }
 
@@ -1398,13 +1403,13 @@ function Receive-PiManagedInstallArtifacts {
 
   $packageJsonPath = Join-Path $ManagedStageDir "package.json"
   Write-Host "Downloading managed installer package.json for Pi $managedVersion"
-  if (-not (Invoke-DownloadManagedInstallerArtifact "$PiInstallerApiBase/$managedVersion/package.json" $packageJsonPath "package.json")) {
+  if (-not (Invoke-DownloadManagedInstallerArtifact "$PiInstallerDownloadBase/v$managedVersion/package.json" $packageJsonPath "package.json")) {
     return $false
   }
 
   $packageLockPath = Join-Path $ManagedStageDir "package-lock.json"
   Write-Host "Downloading managed installer package-lock.json for Pi $managedVersion"
-  if (-not (Invoke-DownloadManagedInstallerArtifact "$PiInstallerApiBase/$managedVersion/package-lock.json" $packageLockPath "package-lock.json")) {
+  if (-not (Invoke-DownloadManagedInstallerArtifact "$PiInstallerDownloadBase/v$managedVersion/package-lock.json" $packageLockPath "package-lock.json")) {
     return $false
   }
 
@@ -1746,7 +1751,8 @@ function Install-PiPackageWithProgress {
         [string]$FunctionSource,
         [string]$Package,
         [string]$Command,
-        [string]$InstallerApiBase,
+        [string]$InstallerMetadataUrl,
+        [string]$InstallerDownloadBase,
         [string]$ManagedInstallMarker,
         [string]$MinReleaseAgeArg,
         [string]$OutputLog
@@ -1755,7 +1761,8 @@ function Install-PiPackageWithProgress {
       $ErrorActionPreference = "Stop"
       $global:PiPackage = $Package
       $global:PiCmd = $Command
-      $global:PiInstallerApiBase = $InstallerApiBase
+      $global:PiInstallerMetadataUrl = $InstallerMetadataUrl
+      $global:PiInstallerDownloadBase = $InstallerDownloadBase
       $global:PiManagedInstallMarker = $ManagedInstallMarker
       $global:NpmMinReleaseAgeArg = $MinReleaseAgeArg
       try {
@@ -1767,7 +1774,7 @@ function Install-PiPackageWithProgress {
         $failureMessage | Out-File -FilePath $OutputLog -Append
         1
       }
-    } -ArgumentList $workerSource, $PiPackage, $PiCmd, $PiInstallerApiBase, $PiManagedInstallMarker, $NpmMinReleaseAgeArg, $logFile
+    } -ArgumentList $workerSource, $PiPackage, $PiCmd, $PiInstallerMetadataUrl, $PiInstallerDownloadBase, $PiManagedInstallMarker, $NpmMinReleaseAgeArg, $logFile
   } else {
     $npmArgs = [System.Collections.ArrayList]::new()
     $npmArgs.AddRange([string[]](Get-NpmInstallPiArgs "verbose" "false"))
@@ -1981,7 +1988,7 @@ function Write-PiNotOnPathMessage {
 
 function Invoke-PiInstaller {
   if ([System.Environment]::OSVersion.Platform -ne "Win32NT") {
-    Write-Host "This PowerShell installer is for Windows. On Unix, use: curl -fsSL https://vega.codes/pi/install.sh | sh"
+    Write-Host "This PowerShell installer is for Windows. On Unix, use: curl -fsSL https://github.com/lingeniare/pi-vega/releases/latest/download/install.sh | sh"
     exit 1
   }
 

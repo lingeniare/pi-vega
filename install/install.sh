@@ -2,10 +2,15 @@
 
 PI_PACKAGE="@earendil-works/pi-coding-agent"
 PI_CMD="pi"
-PI_INSTALLER_API_BASE="${PI_INSTALLER_API_BASE:-https://vega.codes/pi/api/installer/releases}"
-# Package spec used for the legacy npm install path: a tarball URL on vega.codes
-# because this fork is not published to an npm registry.
-PI_PACKAGE_SPEC="${PI_PACKAGE_SPEC:-https://vega.codes/pi/releases/latest/pi-coding-agent-latest.tgz}"
+# Releases are published as GitHub Release assets on the fork: metadata and the
+# latest tarball under releases/latest/download, versioned manifests and
+# tarballs under releases/download/<tag>.
+PI_RELEASES_URL="${PI_RELEASES_URL:-https://github.com/lingeniare/pi-vega/releases}"
+PI_INSTALLER_METADATA_URL="${PI_INSTALLER_METADATA_URL:-$PI_RELEASES_URL/latest/download/installer-release.json}"
+PI_INSTALLER_DOWNLOAD_BASE="${PI_INSTALLER_DOWNLOAD_BASE:-$PI_RELEASES_URL/download}"
+# Package spec used for the legacy npm install path: a tarball URL on GitHub
+# Releases because this fork is not published to an npm registry.
+PI_PACKAGE_SPEC="${PI_PACKAGE_SPEC:-$PI_RELEASES_URL/latest/download/pi-coding-agent-latest.tgz}"
 PI_MANAGED_INSTALL_MARKER="managed-install.json"
 # Pi publishes npm-shrinkwrap.json, so the explicit installer/reinstaller can
 # bypass npm's release-age gate without reopening transitive dependency ranges.
@@ -13,7 +18,7 @@ PI_NPM_INSTALL_MIN_AGE_ARG="--min-release-age=0"
 PI_ESC=$(printf '\033')
 PI_CR=$(printf '\r')
 PI_ETX=$(printf '\003')
-readonly PI_PACKAGE PI_CMD PI_INSTALLER_API_BASE PI_PACKAGE_SPEC PI_MANAGED_INSTALL_MARKER PI_NPM_INSTALL_MIN_AGE_ARG PI_ESC PI_CR PI_ETX
+readonly PI_PACKAGE PI_CMD PI_RELEASES_URL PI_INSTALLER_METADATA_URL PI_INSTALLER_DOWNLOAD_BASE PI_PACKAGE_SPEC PI_MANAGED_INSTALL_MARKER PI_NPM_INSTALL_MIN_AGE_ARG PI_ESC PI_CR PI_ETX
 
 pi_installer_main() {
   set -eu
@@ -1049,7 +1054,7 @@ download_managed_install_artifacts() {
   managed_stage_dir="$1"
 
   printf 'Downloading managed installer release metadata\n' >&2
-  download_installer_artifact "$PI_INSTALLER_API_BASE/latest" "$managed_stage_dir/metadata.json" "release metadata" || return 1
+  download_installer_artifact "$PI_INSTALLER_METADATA_URL" "$managed_stage_dir/metadata.json" "release metadata" || return 1
 
   if ! managed_version=$(managed_install_release_version "$managed_stage_dir/metadata.json"); then
     printf 'Managed installer release metadata is invalid.\n' >&2
@@ -1057,10 +1062,10 @@ download_managed_install_artifacts() {
   fi
 
   printf 'Downloading managed installer package.json for Pi %s\n' "$managed_version" >&2
-  download_installer_artifact "$PI_INSTALLER_API_BASE/$managed_version/package.json" "$managed_stage_dir/package.json" "package.json" || return 1
+  download_installer_artifact "$PI_INSTALLER_DOWNLOAD_BASE/v$managed_version/package.json" "$managed_stage_dir/package.json" "package.json" || return 1
 
   printf 'Downloading managed installer package-lock.json for Pi %s\n' "$managed_version" >&2
-  download_installer_artifact "$PI_INSTALLER_API_BASE/$managed_version/package-lock.json" "$managed_stage_dir/package-lock.json" "package-lock.json" || return 1
+  download_installer_artifact "$PI_INSTALLER_DOWNLOAD_BASE/v$managed_version/package-lock.json" "$managed_stage_dir/package-lock.json" "package-lock.json" || return 1
 
   validate_managed_install_artifacts "$managed_stage_dir/package.json" "$managed_stage_dir/package-lock.json" "$managed_version"
 }

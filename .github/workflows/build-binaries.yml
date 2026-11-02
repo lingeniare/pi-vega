@@ -1,9 +1,9 @@
 name: Build Binaries
 
 on:
-  push:
-    tags:
-      - 'v*'
+  # Manual only on this fork: the pipeline publishes to npm via trusted
+  # publishing and announces on pi.dev, which upstream infrastructure owns.
+  # Fork releases are published to GitHub Releases by hand (see README).
   workflow_dispatch:
     inputs:
       tag:

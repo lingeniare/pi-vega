@@ -19,11 +19,18 @@
  * installs follows lockfile `resolved` URLs; `npm/pnpm/bun i -g <tgz>` follows
  * dependency specs. Third-party dependencies keep resolving from npmjs.
  *
+ * With `--layout github` it instead emits a flat asset directory to upload to a
+ * GitHub Release: tarballs, installer scripts, `installer-release.json`
+ * metadata, and the managed install `package.json`/`package-lock.json`. All
+ * URLs point at `https://github.com/<repo>/releases/download/<tag>/<asset>`.
+ *
  * Usage:
  *   npm run build                       # required first (dist/ must exist)
  *   node scripts/build-vega-release.mjs [--out .artifacts/vega-site] [--base-url https://vega.codes/pi]
+ *   node scripts/build-vega-release.mjs --layout github [--repo lingeniare/pi-vega] [--tag vX.Y.Z]
  *
- * Deploy: rsync -r <out>/ user@host:/var/www/vega.codes/
+ * Deploy site layout: rsync -r <out>/ user@host:/var/www/vega.codes/
+ * Deploy github layout: gh release upload <tag> <out>/*
  */
 
 import { execFileSync, spawnSync } from "node:child_process";
@@ -49,16 +56,25 @@ const installDir = join(repoRoot, "install");
 const INTERNAL_SCOPE = "@earendil-works/";
 
 function parseArgs(argv) {
-	const options = { out: join(repoRoot, ".artifacts", "vega-site"), baseUrl: "https://vega.codes/pi" };
+	const options = { out: undefined, baseUrl: "https://vega.codes/pi", layout: "site", repo: "lingeniare/pi-vega", tag: undefined };
 	for (let index = 0; index < argv.length; index += 1) {
 		const arg = argv[index];
 		if (arg === "--out") {
 			options.out = resolve(argv[++index]);
 		} else if (arg === "--base-url") {
 			options.baseUrl = argv[++index].replace(/\/+$/, "");
+		} else if (arg === "--layout") {
+			options.layout = argv[++index];
+		} else if (arg === "--repo") {
+			options.repo = argv[++index];
+		} else if (arg === "--tag") {
+			options.tag = argv[++index];
 		} else {
 			throw new Error(`Unknown argument: ${arg}`);
 		}
+	}
+	if (options.layout !== "site" && options.layout !== "github") {
+		throw new Error(`Unknown layout: ${options.layout}`);
 	}
 	return options;
 }
@@ -109,14 +125,15 @@ function sha512Integrity(path) {
 	return `sha512-${createHash("sha512").update(readFileSync(path)).digest("base64")}`;
 }
 
-// Rewrite @earendil-works/* dependency specs in a manifest to tarball URLs.
-function rewriteInternalDeps(manifest, version, baseUrl) {
+// Rewrite @earendil-works/* dependency specs in a manifest to tarball URLs
+// produced by depUrl(name).
+function rewriteInternalDeps(manifest, depUrl) {
 	for (const field of ["dependencies", "optionalDependencies", "peerDependencies", "devDependencies"]) {
 		const deps = manifest[field];
 		if (!deps) continue;
 		for (const name of Object.keys(deps)) {
 			if (name.startsWith(INTERNAL_SCOPE)) {
-				deps[name] = `${baseUrl}/releases/${version}/${tarballBasename(name, version)}`;
+				deps[name] = depUrl(name);
 			}
 		}
 	}
@@ -133,13 +150,13 @@ const TAR_LOCAL = process.platform === "win32" ? ["--force-local"] : [];
 
 // Unpack a scoped npm tarball, rewrite internal deps to URLs, repack, and
 // return the final tarball path plus its integrity hash.
-function repackWithUrlDeps(tarballPath, outDir, version, baseUrl) {
+function repackWithUrlDeps(tarballPath, outDir, version, depUrl) {
 	const stageDir = mkdtempSync(join(tmpdir(), "pi-vega-repack-"));
 	try {
 		execFileSync("tar", [...TAR_LOCAL, "-xzf", tarballPath, "-C", stageDir]);
 		const manifestPath = join(stageDir, "package", "package.json");
 		const manifest = readJson(manifestPath);
-		rewriteInternalDeps(manifest, version, baseUrl);
+		rewriteInternalDeps(manifest, depUrl);
 		writeFileSync(manifestPath, `${JSON.stringify(manifest, null, "\t")}\n`);
 		const outPath = join(outDir, tarballBasename(manifest.name, version));
 		execFileSync("tar", [...TAR_LOCAL, "-czf", outPath, "-C", stageDir, "package"]);
@@ -162,10 +179,18 @@ function findInternalPackages(lockPackages, version) {
 const options = parseArgs(process.argv.slice(2));
 const codingAgentPackage = readJson(join(codingAgentDir, "package.json"));
 const version = codingAgentPackage.version;
-const baseUrl = options.baseUrl;
-const outDir = options.out;
+const layout = options.layout;
+const tag = options.tag ?? `v${version}`;
+// GitHub Releases serves release assets as flat files, so in the github layout
+// dep URLs point straight at the tagged release's download directory.
+const downloadBase = `https://github.com/${options.repo}/releases/download/${tag}`;
+const depUrl =
+	layout === "github"
+		? (name) => `${downloadBase}/${tarballBasename(name, version)}`
+		: (name) => `${options.baseUrl}/releases/${version}/${tarballBasename(name, version)}`;
+const outDir = options.out ?? join(repoRoot, ".artifacts", layout === "github" ? "github-release" : "vega-site");
 const siteRoot = join(outDir, "pi");
-const releasesDir = join(siteRoot, "releases", version);
+const releasesDir = layout === "github" ? outDir : join(siteRoot, "releases", version);
 const latestDir = join(siteRoot, "releases", "latest");
 const apiDir = join(siteRoot, "api");
 const apiReleasesDir = join(apiDir, "installer", "releases");
@@ -181,7 +206,7 @@ const installerPackageJson = readJson(join(codingAgentDir, "install-lock", "pack
 const installLock = readJson(join(codingAgentDir, "install-lock", "package-lock.json"));
 
 // Pack every internal package referenced by the install lockfile, rewrite its
-// internal deps to vega.codes tarball URLs, and collect integrity hashes.
+// internal deps to release tarball URLs, and collect integrity hashes.
 const internalPackages = findInternalPackages(installLock.packages, version);
 const workspaceDirs = new Map();
 for (const dirName of readdirSync(join(repoRoot, "packages"))) {
@@ -212,7 +237,7 @@ try {
 		if (!packedFile || !existsSync(join(packStageDir, packedFile))) {
 			throw new Error(`npm pack did not produce a tarball for ${name}: ${output}`);
 		}
-		const repacked = repackWithUrlDeps(join(packStageDir, packedFile), releasesDir, version, baseUrl);
+		const repacked = repackWithUrlDeps(join(packStageDir, packedFile), releasesDir, version, depUrl);
 		tarballs.set(name, repacked);
 		console.log(`  packed ${name}@${pkgVersion} -> ${basename(repacked.path)}`);
 	}
@@ -228,7 +253,7 @@ for (const [lockPath, entry] of Object.entries(installLock.packages)) {
 		: undefined;
 	if (name?.startsWith(INTERNAL_SCOPE) && tarballs.has(name)) {
 		const tarball = tarballs.get(name);
-		entry.resolved = `${baseUrl}/releases/${version}/${basename(tarball.path)}`;
+		entry.resolved = depUrl(name);
 		entry.integrity = tarball.integrity;
 	}
 	// The root entry's dependency map must keep the semver spec: the managed
@@ -239,36 +264,52 @@ for (const [lockPath, entry] of Object.entries(installLock.packages)) {
 		if (!deps) continue;
 		for (const depName of Object.keys(deps)) {
 			if (depName.startsWith(INTERNAL_SCOPE)) {
-				deps[depName] = `${baseUrl}/releases/${version}/${tarballBasename(depName, version)}`;
+				deps[depName] = depUrl(depName);
 			}
 		}
 	}
 }
 
-// Emit the site tree.
-mkdirSync(apiReleasesDir, { recursive: true });
-mkdirSync(join(apiReleasesDir, version), { recursive: true });
-mkdirSync(latestDir, { recursive: true });
-
 const codingAgentTarball = tarballs.get(codingAgentPackage.name);
 if (!codingAgentTarball) {
 	throw new Error(`Install lockfile does not include ${codingAgentPackage.name}`);
 }
-const installSpec = `${baseUrl}/releases/${version}/${basename(codingAgentTarball.path)}`;
+const installSpec = depUrl(codingAgentPackage.name);
 const latestJson = `${JSON.stringify({ version, installSpec })}\n`;
 
-writeFileSync(join(apiDir, "latest-version"), latestJson);
-writeFileSync(join(apiReleasesDir, "latest"), latestJson);
-writeFileSync(join(apiReleasesDir, version, "package.json"), `${JSON.stringify(installerPackageJson, null, "\t")}\n`);
-writeFileSync(join(apiReleasesDir, version, "package-lock.json"), `${JSON.stringify(installLock, null, "\t")}\n`);
+if (layout === "github") {
+	// Flat asset set for `gh release upload`: the installer resolves metadata at
+	// releases/latest/download/installer-release.json and managed manifests at
+	// releases/download/<tag>/{package.json,package-lock.json}.
+	writeFileSync(join(outDir, "installer-release.json"), `${JSON.stringify({ version, packageName: codingAgentPackage.name, installSpec })}\n`);
+	writeFileSync(join(outDir, "package.json"), `${JSON.stringify(installerPackageJson, null, "\t")}\n`);
+	writeFileSync(join(outDir, "package-lock.json"), `${JSON.stringify(installLock, null, "\t")}\n`);
+	for (const tarball of tarballs.values()) {
+		const fileName = basename(tarball.path);
+		cpSync(tarball.path, join(outDir, fileName.replace(`-${version}.tgz`, "-latest.tgz")));
+	}
+	for (const scriptName of ["install.sh", "install.ps1"]) {
+		cpSync(join(installDir, scriptName), join(outDir, scriptName));
+	}
+} else {
+	// Emit the site tree.
+	mkdirSync(apiReleasesDir, { recursive: true });
+	mkdirSync(join(apiReleasesDir, version), { recursive: true });
+	mkdirSync(latestDir, { recursive: true });
 
-for (const tarball of tarballs.values()) {
-	const fileName = basename(tarball.path);
-	const latestName = fileName.replace(`-${version}.tgz`, "-latest.tgz");
-	cpSync(tarball.path, join(latestDir, latestName));
-}
-for (const scriptName of ["install.sh", "install.ps1"]) {
-	cpSync(join(installDir, scriptName), join(siteRoot, scriptName));
+	writeFileSync(join(apiDir, "latest-version"), latestJson);
+	writeFileSync(join(apiReleasesDir, "latest"), latestJson);
+	writeFileSync(join(apiReleasesDir, version, "package.json"), `${JSON.stringify(installerPackageJson, null, "\t")}\n`);
+	writeFileSync(join(apiReleasesDir, version, "package-lock.json"), `${JSON.stringify(installLock, null, "\t")}\n`);
+
+	for (const tarball of tarballs.values()) {
+		const fileName = basename(tarball.path);
+		const latestName = fileName.replace(`-${version}.tgz`, "-latest.tgz");
+		cpSync(tarball.path, join(latestDir, latestName));
+	}
+	for (const scriptName of ["install.sh", "install.ps1"]) {
+		cpSync(join(installDir, scriptName), join(siteRoot, scriptName));
+	}
 }
 
 // Sanity checks matching the installer's artifact validation.
@@ -283,7 +324,13 @@ for (const [ok, label] of checks) {
 	if (!ok) throw new Error(`Generated artifacts failed validation: ${label}`);
 }
 
-console.log(`\nBuilt vega.codes release site v${version} at ${relative(repoRoot, outDir)}/pi`);
-console.log(`  ${tarballs.size} tarballs, install endpoints under pi/api`);
-console.log(`\nDeploy with e.g.:\n  rsync -r ${relative(repoRoot, outDir)}/ user@vega.codes:/var/www/vega.codes/`);
-console.log("Serve extensionless files pi/api/latest-version and pi/api/installer/releases/latest as-is (JSON content).");
+if (layout === "github") {
+	console.log(`\nBuilt GitHub release assets v${version} at ${relative(repoRoot, outDir)}`);
+	console.log(`  ${tarballs.size} tarballs, installer scripts and managed manifests`);
+	console.log(`\nPublish with e.g.:\n  gh release create ${tag} --repo ${options.repo} ${relative(repoRoot, outDir)}/*`);
+} else {
+	console.log(`\nBuilt vega.codes release site v${version} at ${relative(repoRoot, outDir)}/pi`);
+	console.log(`  ${tarballs.size} tarballs, install endpoints under pi/api`);
+	console.log(`\nDeploy with e.g.:\n  rsync -r ${relative(repoRoot, outDir)}/ user@vega.codes:/var/www/vega.codes/`);
+	console.log("Serve extensionless files pi/api/latest-version and pi/api/installer/releases/latest as-is (JSON content).");
+}
