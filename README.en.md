@@ -7,6 +7,7 @@
   </a>
 </p>
 <p align="center">
+  <a href="https://github.com/lingeniare/pi-vega/releases/latest"><img alt="Release" src="https://img.shields.io/github/v/release/lingeniare/pi-vega?style=flat-square&label=release" /></a>
   <a href="https://t.me/ingeniare"><img alt="Telegram" src="https://img.shields.io/badge/Telegram-@ingeniare-2CA5E0?style=flat-square&logo=telegram&logoColor=white" /></a>
   <a href="https://vega.codes"><img alt="vega.codes" src="https://img.shields.io/badge/vega.codes-website-6E56CF?style=flat-square" /></a>
   <a href="https://api.vega.chat"><img alt="api.vega.chat" src="https://img.shields.io/badge/api.vega.chat-provider-0EA5E9?style=flat-square" /></a>
@@ -43,6 +44,8 @@ Or with a package manager via tarball URL (requires Node.js 22.19+):
 npm install -g --ignore-scripts https://github.com/lingeniare/pi-vega/releases/latest/download/pi-coding-agent-latest.tgz
 # or: pnpm add -g / bun add -g — same URL
 ```
+
+Releases and all install artifacts live on [GitHub Releases](https://github.com/lingeniare/pi-vega/releases). To update, run `pi update` (managed installs) or rerun the installer.
 
 From source, for development:
 
