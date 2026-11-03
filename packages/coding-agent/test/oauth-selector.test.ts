@@ -71,6 +71,36 @@ describe("OAuthSelectorComponent", () => {
 		]);
 	});
 
+	it("lists VEGA before the alphabetical providers", () => {
+		const getLoginProviderOptions = (
+			InteractiveMode as unknown as {
+				prototype: {
+					getLoginProviderOptions(
+						this: object,
+						authType?: "oauth" | "api_key",
+					): Array<{ id: string; name: string; authType: string }>;
+				};
+			}
+		).prototype.getLoginProviderOptions;
+		const providers = [
+			{ id: "anthropic", name: "Anthropic", auth: { apiKey: { name: "Anthropic API key" } } },
+			{ id: "openai", name: "OpenAI", auth: { apiKey: { name: "OpenAI API key" } } },
+			{ id: "vega", name: "VEGA", auth: { apiKey: { name: "VEGA API key" } } },
+		];
+		const fakeThis = {
+			session: {
+				modelRuntime: {
+					getProviders: () => providers,
+					getProviderAuthStatus: () => ({ configured: false }),
+					isUsingOAuth: () => false,
+				},
+			},
+		};
+
+		const options = getLoginProviderOptions.call(fakeThis, "api_key");
+		expect(options.map((option) => option.id)).toEqual(["vega", "anthropic", "openai"]);
+	});
+
 	it("renders an option without compiled auth status as not configured", () => {
 		const selector = new OAuthSelectorComponent(
 			"login",

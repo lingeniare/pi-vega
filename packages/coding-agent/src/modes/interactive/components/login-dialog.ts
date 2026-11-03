@@ -157,7 +157,7 @@ export class LoginDialogComponent extends Container implements Focusable {
 			this.contentContainer.addChild(new Text(theme.fg("warning", instructions), 1, 0));
 		}
 
-		if (target !== undefined) openBrowser(target);
+		if (target !== undefined) void openBrowser(target);
 		this.tui.requestRender();
 	}
 
@@ -174,11 +174,13 @@ export class LoginDialogComponent extends Container implements Focusable {
 		this.clearDeviceCodeAction();
 		this.contentContainer.clear();
 		this.contentContainer.addChild(new Spacer(1));
-		const shownUrl = displayUrl(info.verificationUri);
-		this.contentContainer.addChild(new Text(theme.fg("accent", webLink(shownUrl, shownUrl)), 1, 0));
-
-		const clickHint = process.platform === "darwin" ? "Cmd+click to open" : "Ctrl+click to open";
-		this.contentContainer.addChild(new Text(theme.fg("dim", webLink(clickHint, info.verificationUri)), 1, 0));
+		const target = webUrl(info.verificationUri);
+		if (target !== undefined) {
+			this.authUrl = new AuthUrlComponent(this.tui, target);
+			this.contentContainer.addChild(this.authUrl);
+		} else {
+			this.contentContainer.addChild(new Text(theme.fg("accent", displayUrl(info.verificationUri)), 1, 0));
+		}
 		this.contentContainer.addChild(new Spacer(1));
 		this.contentContainer.addChild(new Text(theme.fg("warning", `Enter code: ${info.userCode}`), 1, 0));
 
@@ -205,19 +207,53 @@ export class LoginDialogComponent extends Container implements Focusable {
 	}
 
 	private activateDeviceCode(info: OAuthDeviceCodeInfo, hint: Container): void {
-		this.setDeviceCodeStatus(hint, info.copyCodeOnConfirm ? "Copying code..." : "Browser open requested");
+		let copied: boolean | undefined;
+		let browserFailed = false;
+		const renderStatus = () => {
+			const parts: string[] = [];
+			if (info.copyCodeOnConfirm) {
+				parts.push(
+					copied === undefined ? "Copying code..." : copied ? "Code copied to clipboard" : "Copy code manually",
+				);
+			}
+			if (info.openBrowserOnConfirm) {
+				parts.push(browserFailed ? "Could not open browser - use the link above" : "Browser open requested");
+			}
+			this.setDeviceCodeStatus(hint, parts.join("; "));
+		};
+		renderStatus();
 		if (info.copyCodeOnConfirm) {
 			// Do not delay polling or browser opening while clipboard tools are running.
-			void copyToClipboard(info.userCode)
-				.then(() => this.setDeviceCodeStatus(hint, "Code copied to clipboard"))
-				.catch(() => this.setDeviceCodeStatus(hint, "Copy code manually"));
+			void copyToClipboard(info.userCode).then(
+				() => {
+					copied = true;
+					renderStatus();
+				},
+				() => {
+					copied = false;
+					renderStatus();
+				},
+			);
 		}
 		if (info.openBrowserOnConfirm) {
 			try {
 				const target = webUrl(info.verificationUri);
-				if (target !== undefined) openBrowser(target);
+				if (target !== undefined) {
+					void openBrowser(target).then(
+						(opened) => {
+							browserFailed = !opened;
+							renderStatus();
+						},
+						() => {
+							browserFailed = true;
+							renderStatus();
+						},
+					);
+				}
 			} catch {
 				// Launcher failures must not interrupt login.
+				browserFailed = true;
+				renderStatus();
 			}
 		}
 	}

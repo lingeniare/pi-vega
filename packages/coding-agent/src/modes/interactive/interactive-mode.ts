@@ -5925,7 +5925,12 @@ export class InteractiveMode {
 				});
 			}
 		}
-		return options.sort((a, b) => a.name.localeCompare(b.name));
+		// VEGA is this build's primary provider: pin it above the alphabetical listing.
+		return options.sort((a, b) => {
+			if (a.id === "vega" && b.id !== "vega") return -1;
+			if (a.id !== "vega" && b.id === "vega") return 1;
+			return a.name.localeCompare(b.name);
+		});
 	}
 
 	private async getLogoutProviderOptions(): Promise<AuthSelectorProvider[]> {

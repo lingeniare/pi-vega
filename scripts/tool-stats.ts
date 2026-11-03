@@ -229,4 +229,4 @@ const html = `<!doctype html>
 mkdirSync(resolve(output, ".."), { recursive: true });
 writeFileSync(output, html);
 console.log(`Wrote ${output}`);
-openBrowser(output);
+void openBrowser(output);

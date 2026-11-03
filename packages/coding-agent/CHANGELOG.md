@@ -6,6 +6,7 @@
 
 - Extension packages can now show their changelog after an update. Pi reads `pi.changelogPath` from the package's `package.json`, or `CHANGELOG.md` in the package root, and on the next fresh launch shows entries newer than the last seen version under "Extension Updates". The `collapseChangelog` setting condenses this to one line per package ([#5958](https://github.com/earendil-works/pi/issues/5958), [#8790](https://github.com/earendil-works/pi/pull/8790))
 - Device-code login (for example GitHub Copilot) now opens the verification page and copies the code when you press Enter. Providers can turn either action off with `openBrowserOnConfirm: false` or `copyCodeOnConfirm: false` ([#9282](https://github.com/earendil-works/pi/issues/9282), [#9301](https://github.com/earendil-works/pi/pull/9301))
+- The device-code login screen now supports `app.message.copy` (`ctrl+x` by default) to copy the verification URL, matching other OAuth sign-in screens
 - Added the `web` built-in extension with `web_fetch` (read a URL as text, local) and `web_search` (web search through the `openrouter:web_search` server tool on the VEGA or OpenRouter credential). They are on by default on the `vega` provider; elsewhere enable them with `"defaultTools": ["+web_fetch", "+web_search"]` or `--tools`
 
 ### Changed
@@ -29,6 +30,7 @@
 - Fixed aborting a bash command on macOS sometimes running the next command of a list such as `long_step; next_step`. pi now stops the process group before killing it ([#11252](https://github.com/earendil-works/pi/issues/11252), [#11289](https://github.com/earendil-works/pi/pull/11289))
 - Fixed streamed tool calls re-running their call renderer on every argument delta; the interactive mode now renders the latest arguments once per frame, so a large streamed `write` no longer re-highlights its whole content per delta ([#9265](https://github.com/earendil-works/pi/issues/9265))
 - Fixed the login dialog opening sign-in URLs that are not web URLs, and printing control characters from sign-in, device-code, and info URLs, which could end a terminal hyperlink and send escape sequences to the terminal
+- Fixed the device-code login staying silent when the browser could not be opened. The dialog now reports "Could not open browser" so the link can be opened manually, and on WSL the Windows browser is launched through executable interop instead of a likely missing `xdg-open`
 
 ## [1.4.0] - 2026-10-21
 

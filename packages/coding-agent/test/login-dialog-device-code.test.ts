@@ -29,6 +29,7 @@ describe("device-code login", () => {
 	beforeEach(() => {
 		vi.resetAllMocks();
 		vi.mocked(copyToClipboard).mockResolvedValue(undefined);
+		vi.mocked(openBrowser).mockResolvedValue(true);
 		setKeybindings(new KeybindingsManager());
 	});
 
@@ -71,16 +72,18 @@ describe("device-code login", () => {
 		},
 	);
 
-	it("clears the previous auth URL copy action when showing a device code", () => {
+	it("copies the device verification URL instead of a stale auth URL", async () => {
 		const { dialog } = createDialog();
 		dialog.showAuth("https://example.com/authorize");
 		vi.mocked(openBrowser).mockClear();
 		dialog.showDeviceCode(device);
 		dialog.handleInput("\x18");
-		expect(copyToClipboard).not.toHaveBeenCalled();
+		await new Promise<void>((resolve) => setImmediate(resolve));
+		expect(copyToClipboard).toHaveBeenCalledExactlyOnceWith(device.verificationUri);
+		expect(render(dialog)).toContain("Copied URL to clipboard");
 		expect(openBrowser).not.toHaveBeenCalled();
 		dialog.handleInput("\r");
-		expect(copyToClipboard).toHaveBeenCalledExactlyOnceWith(device.userCode);
+		expect(copyToClipboard).toHaveBeenLastCalledWith(device.userCode);
 	});
 
 	it("clears device actions when switching to browser authentication", () => {
@@ -135,9 +138,20 @@ describe("device-code login", () => {
 		expect(render(dialog)).toContain(device.verificationUri);
 		expect(render(dialog)).toContain(`Enter code: ${device.userCode}`);
 		expect(render(dialog)).toContain("Copy code manually");
+		expect(render(dialog)).toContain("Could not open browser");
 		expect(render(dialog)).toContain("Waiting for authentication...");
 		expect(dialog.signal.aborted).toBe(false);
 		expect(onComplete).not.toHaveBeenCalled();
+	});
+
+	it("reports when the browser launcher rejects the open request", async () => {
+		vi.mocked(openBrowser).mockResolvedValue(false);
+		const { dialog } = createDialog();
+		dialog.showDeviceCode(device);
+		dialog.handleInput("\r");
+		await new Promise<void>((resolve) => setImmediate(resolve));
+		expect(render(dialog)).toContain("Code copied to clipboard");
+		expect(render(dialog)).toContain("Could not open browser");
 	});
 });
 
