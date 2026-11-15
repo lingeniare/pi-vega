@@ -1,16 +1,15 @@
 import { mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import type { JsonValue } from "@earendil-works/chord";
 import { withAbortSignal } from "@earendil-works/chord/context";
 import { applyImmutable } from "@earendil-works/chord/delta";
+import type { JsonValue } from "@earendil-works/chord/json";
 import {
 	type AssistantMessage,
 	fauxAssistantMessage,
 	fauxText,
 	fauxToolCall,
 	type ToolResultMessage,
-	Type,
 	type Usage,
 } from "@earendil-works/pi-ai";
 import {
@@ -33,15 +32,17 @@ import {
 	type ToolTaskResult,
 	UsageDoc,
 } from "@earendil-works/pi-durable";
+import { obj, opt, str } from "@earendil-works/pi-schema";
 import { afterEach, describe, expect, it } from "vitest";
 import { openNodeSqliteStorage } from "../src/storage/sqlite/node.ts";
+import { commitWrites } from "../src/testing/commit-writes.ts";
 import { allEntries, type ChatSetup, chatSetup, openChat } from "./chat-support.ts";
 import { addHooks, addTool } from "./harness-support.ts";
 import { endedAt, nestedResultOf, nestedResults, slotsOf, startOrder, viewHistory } from "./live-support.ts";
 import { context, onValue } from "./session-support.ts";
 import { aborted, deferred, eventually } from "./task-support.ts";
 
-const Parameters = Type.Object({ text: Type.Optional(Type.String()) });
+const Parameters = obj({ text: opt(str()) });
 type Tool = ToolRegistration<typeof Parameters>;
 
 function tool(name: string, execute: Tool["execute"], extra: Partial<Tool> = {}): Tool {
@@ -117,11 +118,11 @@ describe("nested tool calls", () => {
 		// Per document written, the keys of the nested calls it holds.
 		const written: { kind: string; key: string | undefined }[] = [];
 		const commit = storage.commit.bind(storage);
-		storage.commit = (writes, adopt, commitContext) => {
-			for (const write of writes) {
+		storage.commit = (batches, receive, commitContext) => {
+			for (const write of batches.flat()) {
 				if (write.type === "document.create") written.push({ kind: write.record.kind, key: write.record.key });
 			}
-			return commit(writes, adopt, commitContext);
+			return commit(batches, receive, commitContext);
 		};
 		const { harness, root } = await openChat(storage, setup);
 		await (await root.submit({ type: "input", content: "go" }, context)).wait(context);
@@ -328,7 +329,7 @@ describe("nested tool calls", () => {
 			defineTool({
 				name: "pair",
 				description: "pair",
-				parameters: Type.Object({ a: Type.String(), b: Type.String() }),
+				parameters: obj({ a: str(), b: str() }),
 				execute: async (args) => {
 					runs++;
 					return { output: [{ type: "text", text: `${args.a}${args.b}` }] };
@@ -1206,7 +1207,7 @@ describe("nested tool calls", () => {
 			{
 				callId: "c1/2",
 				status: "done",
-				summary: { isError: true, error: "Tool missing is not available" },
+				summary: { isError: true, durationMs: expect.any(Number), error: "Tool missing is not available" },
 			},
 			{ callId: "c1/3", status: "done", summary: { isError: false, durationMs: expect.any(Number), usage } },
 			{
@@ -1233,14 +1234,34 @@ describe("nested tool calls", () => {
 			checkpoint: { phase: "call" },
 		});
 	});
+
+	// #11043
+	it("keeps version 2 tool task input as it is", () => {
+		const migrate = ToolTask.definition.migrate!;
+		const model = { kind: "model", assistant: 3, callId: "c1" };
+		const nested = {
+			kind: "nested",
+			parent: 7,
+			parentCallId: "c1",
+			key: "k",
+			call: { type: "toolCall", id: "c1/k", name: "echo", arguments: {} },
+		};
+		expect(migrate(model, { phase: "call" }, 2).input).toEqual(model);
+		expect(migrate(nested, { phase: "call" }, 2).input).toEqual(nested);
+	});
 });
 
-describe("tool task version 1 records", () => {
+describe("tool task version 1 and 2 records", () => {
 	/**
-	 * Store a live tool task for call `c1` of an assistant entry, close, and rewrite its record as version 1 stored it:
-	 * `{ assistant, callId }` input at version 1, with `checkpoint`. Returns the storage path and the task ID.
+	 * Store a live tool task for call `c1` of an assistant entry, close, and rewrite its record as `version` stored it,
+	 * with `checkpoint`: version 1 had `{ assistant, callId }` input, version 2 added `kind`. Returns the storage path
+	 * and the task ID.
 	 */
-	async function storeVersion1(setup: ChatSetup, checkpoint: JsonValue): Promise<{ path: string; id: TaskId }> {
+	async function storeVersion(
+		setup: ChatSetup,
+		checkpoint: JsonValue,
+		version: 1 | 2 = 1,
+	): Promise<{ path: string; id: TaskId }> {
 		const directory = await mkdtemp(join(tmpdir(), "pi-durable-tool-v1-"));
 		directories.add(directory);
 		const path = join(directory, "session.sqlite");
@@ -1257,11 +1278,12 @@ describe("tool task version 1 records", () => {
 		await harness.close(context);
 		const storage = await openNodeSqliteStorage(path);
 		const record = (await storage.task(id, context))!;
-		const { kind: _kind, ...input } = record.input as Extract<ToolTaskInput, { kind: "model" }>;
+		const { kind: _kind, ...version1 } = record.input as Extract<ToolTaskInput, { kind: "model" }>;
+		const input = version === 1 ? version1 : record.input;
 		const state = { ...record.state, checkpoint } as typeof record.state;
-		await storage.commit(
-			[{ type: "task", value: { ...record, version: 1, input, state } as typeof record }],
-			() => {},
+		await commitWrites(
+			storage,
+			[{ type: "task", value: { ...record, version, input, state } as typeof record }],
 			context,
 		);
 		await storage.close(context);
@@ -1272,12 +1294,12 @@ describe("tool task version 1 records", () => {
 		const setup = chatSetup();
 		const echo = echoTool();
 		addTool(setup.registry, echo.registration);
-		const { path, id } = await storeVersion1(setup, { phase: "call" });
+		const { path, id } = await storeVersion(setup, { phase: "call" });
 		const { harness, root } = await openChat(await openNodeSqliteStorage(path), setup);
 		expect((await harness.getTask(id, context))?.version).toBe(1);
 		harness.resume();
 		const settled = await harness.waitForTask(id, context);
-		expect(settled.version).toBe(2);
+		expect(settled.version).toBe(4);
 		expect(settled.input).toMatchObject({ kind: "model", callId: "c1" });
 		expect(settled.state.outcome).toMatchObject({ status: "completed", result: { kind: "model" } });
 		expect(echo.state.runs).toBe(1);
@@ -1291,16 +1313,35 @@ describe("tool task version 1 records", () => {
 		const echo = echoTool();
 		addTool(setup.registry, echo.registration);
 		const intent = { phase: "execute", arguments: { text: "old" }, replay: "unsafe" };
-		const { path, id } = await storeVersion1(setup, intent);
+		const { path, id } = await storeVersion(setup, intent);
 		const { harness, root } = await openChat(await openNodeSqliteStorage(path), setup);
 		harness.resume();
 		const settled = await harness.waitForTask(id, context);
-		expect(settled.version).toBe(2);
+		expect(settled.version).toBe(4);
 		expect(settled.state.outcome).toMatchObject({ status: "failed", result: { kind: "model" } });
 		expect(echo.state.runs).toBe(0);
 		const [result] = results(await allEntries(root));
 		expect(result).toMatchObject({ toolCallId: "c1", isError: true });
 		expect(text(result)).toContain("Tool echo was interrupted");
+		await harness.close(context);
+	});
+
+	// #11043
+	it("reserves a stored version 2 task under version 4 and runs it as a model-issued call", async () => {
+		const setup = chatSetup();
+		const echo = echoTool();
+		addTool(setup.registry, echo.registration);
+		const { path, id } = await storeVersion(setup, { phase: "call" }, 2);
+		const { harness, root } = await openChat(await openNodeSqliteStorage(path), setup);
+		expect((await harness.getTask(id, context))?.version).toBe(2);
+		harness.resume();
+		const settled = await harness.waitForTask(id, context);
+		expect(settled.version).toBe(4);
+		expect(settled.input).toEqual({ kind: "model", assistant: expect.any(Number), callId: "c1" });
+		expect(settled.state.outcome).toMatchObject({ status: "completed", result: { kind: "model" } });
+		expect(echo.state.runs).toBe(1);
+		const [result] = results(await allEntries(root));
+		expect([result!.toolCallId, text(result)]).toEqual(["c1", "echo old"]);
 		await harness.close(context);
 	});
 });

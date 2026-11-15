@@ -1,8 +1,9 @@
 // What a renderer sees of a run through the conversation view: the transcript window and `pi.live`, every change a
 // commit makes, rebuilt from operations alone. This replaced the event stream (`watchEvents`, #11327).
+
 import { GCProfiler, getHeapStatistics, setFlagsFromString } from "node:v8";
 import { runInNewContext } from "node:vm";
-import type { Draft } from "@earendil-works/chord";
+import type { Draft } from "@earendil-works/chord/delta";
 import { applyImmutable, type Op } from "@earendil-works/chord/delta";
 import {
 	type AssistantMessage,
@@ -11,7 +12,6 @@ import {
 	fauxText,
 	fauxThinking,
 	fauxToolCall,
-	Type,
 } from "@earendil-works/pi-ai";
 import {
 	type Conversation,
@@ -22,6 +22,7 @@ import {
 	type LiveState,
 	MemoryStorage,
 } from "@earendil-works/pi-durable";
+import { num, obj } from "@earendil-works/pi-schema";
 import { describe, expect, it } from "vitest";
 import { type ChatSetup, chatSetup, openChat, textOf, waitFor } from "./chat-support.ts";
 import { addTool } from "./harness-support.ts";
@@ -103,7 +104,12 @@ describe("a run as the conversation view shows it", () => {
 		expect(partialsIn(states).map(textOf)).toEqual(partials.map(textOf));
 		// The run shows from the input's commit until the commit that appends the answer and clears the partial.
 		const started = states.findIndex((state) => state.run !== undefined);
-		expect(states[started]!.run).toEqual({ taskId: expect.any(Number), inputs: [submission.id] });
+		expect(states[started]!.run).toEqual({
+			taskId: expect.any(Number),
+			inputs: [submission.id],
+			turns: 0,
+			first: expect.any(Number),
+		});
 		expect(history.views[started]!.entries.at(-1)!.kind).toBe("pi.user");
 		const ended = states.findIndex((state, index) => index > started && state.run === undefined);
 		expect(states[ended]!.generation).toBeUndefined();
@@ -121,7 +127,7 @@ describe("a run as the conversation view shows it", () => {
 			defineTool({
 				name: "print",
 				description: "Prints",
-				parameters: Type.Object({ n: Type.Number() }),
+				parameters: obj({ n: num() }),
 				execute: async (_args, api) => {
 					api.output("one\n");
 					await new Promise((resolve) => setTimeout(resolve, 150));
@@ -254,7 +260,7 @@ describe("a run as the conversation view shows it", () => {
 			defineTool({
 				name: "tail",
 				description: "Prints lines",
-				parameters: Type.Object({}),
+				parameters: obj({}),
 				outputLimits: { maxLines: 3, retain: "tail" },
 				execute: async (_args, api) => {
 					for (let line = 0; line < 6; line++) {
@@ -327,14 +333,14 @@ describe("a run as the conversation view shows it", () => {
 		await harness.close(context);
 	});
 
-	it("ends a call that never runs with its result at once, and a tool aborted with its generation", async () => {
+	it("ends a call that never runs through its own task, and a tool aborted with its generation", async () => {
 		const setup = chatSetup();
 		addTool(
 			setup.registry,
 			defineTool({
 				name: "wait",
 				description: "Waits until aborted",
-				parameters: Type.Object({}),
+				parameters: obj({}),
 				execute: (_args, _api, callContext) => aborted(callContext.abortSignal!),
 			}),
 		);
@@ -352,13 +358,14 @@ describe("a run as the conversation view shows it", () => {
 		await submission.wait(context);
 		history.detach();
 		const states = history.live();
-		// The call not offered is listed done, with its result entry, in the commit of its calling answer.
+		// #11043: the call not offered is listed pending with its task in the commit of its calling answer, and its task
+		// ends it done with its result entry.
 		const listed = slotsOf(states, "c1").findIndex((slot) => slot !== undefined);
-		const ghost = slotsOf(states, "c1")[listed]!;
-		expect(ghost.status).toBe("done");
-		const listing = history.views[listed]!.entries;
-		expect(listing.map((entry) => entry.kind).slice(-2)).toEqual(["pi.assistant", "pi.tool-result"]);
-		expect(ghost.entry).toBe(listing.at(-1)!.id);
+		expect(slotsOf(states, "c1")[listed]).toMatchObject({ status: "pending", unoffered: true });
+		expect(slotsOf(states, "c1")[listed]!.taskId).toBeDefined();
+		expect(history.views[listed]!.entries.at(-1)!.kind).toBe("pi.assistant");
+		const ended = slotsOf(states, "c1").findIndex((slot) => slot?.status === "done");
+		expect(slotsOf(states, "c1")[ended]!.entry).toBe(history.views[ended]!.entries.at(-1)!.id);
 		// The aborted tool ends with its result entry, then the run ends without an answer.
 		const done = slotsOf(states, "c2").findIndex((slot) => slot?.status === "done");
 		expect(slotsOf(states, "c2")[done]!.entry).toBe(history.views[done]!.entries.at(-1)!.id);
@@ -374,7 +381,7 @@ describe("a run as the conversation view shows it", () => {
 			defineTool({
 				name: "hold",
 				description: "Waits",
-				parameters: Type.Object({}),
+				parameters: obj({}),
 				execute: async () => {
 					await gate.promise;
 					return {};

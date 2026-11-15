@@ -82,9 +82,10 @@ These variables are read by Pi itself:
 | `PI_CODING_AGENT_SESSION_DIR` | Override session storage; overridden by `--session-dir` |
 | `PI_PACKAGE_DIR` | Override the package directory, useful for Nix/Guix store paths |
 | `PI_OFFLINE` | Disable automatic network activity, including model catalog refreshes |
-| `PI_SKIP_VERSION_CHECK` | Disable the `vega.codes` latest-version request |
-| `PI_LATEST_VERSION_URL` | Override the latest-version endpoint used by update checks (default `https://vega.codes/pi/api/latest-version`) |
-| `PI_INSTALLER_API_BASE` | Override the managed-installer release API base (default `https://vega.codes/pi/api/installer/releases`) |
+| `PI_SKIP_VERSION_CHECK` | Disable the latest-version request |
+| `PI_LATEST_VERSION_URL` | Override the latest-version endpoint used by update checks (default `https://github.com/lingeniare/pi-vega/releases/latest/download/installer-release.json`) |
+| `PI_INSTALLER_DOWNLOAD_BASE` | Override the managed-installer download base (default `https://github.com/lingeniare/pi-vega/releases/download`) |
+| `PI_SELF_UPDATE_COMMAND` | Command `pi update` runs to update Pi itself, split on whitespace, with `{packageName}`, `{version}`, and `{installSpec}` placeholders. Takes precedence over the `selfUpdateCommand` setting. See [Custom update command](cli.md#custom-update-command) |
 | `PI_TELEMETRY` | Override install/update telemetry and provider attribution headers: `1`/`true`/`yes` or `0`/`false`/`no` |
 | `PI_CODEMODE_MAX_WORKERS` | Maximum codemode workers alive at once across all sessions in the process; default `2`. Each worker's script may use up to 256 MB. Raise it when one process runs several sessions, such as in-process subagents. Further scripts wait for a free worker. See [Codemode](codemode.md) |
 | `PI_CACHE_RETENTION` | Set to `long` for extended provider prompt caching where supported |

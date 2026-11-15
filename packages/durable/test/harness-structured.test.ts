@@ -1,14 +1,14 @@
 import { mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import type { Context, JsonValue } from "@earendil-works/chord";
+import type { Context } from "@earendil-works/chord/context";
+import type { JsonValue } from "@earendil-works/chord/json";
 import {
 	fauxAssistantMessage,
 	fauxText,
 	fauxToolCall,
 	type Models,
 	type ToolResultMessage,
-	Type,
 } from "@earendil-works/pi-ai";
 import {
 	type Conversation,
@@ -26,6 +26,7 @@ import {
 	type NextTaskState,
 	type Registry,
 	type Storage,
+	type StorageWrite,
 	type TaskGraph,
 	type TaskId,
 	type TaskOptions,
@@ -34,12 +35,13 @@ import {
 	ToolResultEntry,
 	type Tx,
 } from "@earendil-works/pi-durable";
+import { obj } from "@earendil-works/pi-schema";
 import { afterEach, describe, expect, it } from "vitest";
 import { openNodeSqliteStorage } from "../src/storage/sqlite/node.ts";
 import { allEntries, chatSetup, openChat, waitFor } from "./chat-support.ts";
 import { addHooks, addTask, addTool } from "./harness-support.ts";
 import { generations, graphHistory, slotsOf, viewHistory } from "./live-support.ts";
-import { ControlledStorage, context } from "./session-support.ts";
+import { ControlledStorage, context, refusingAt } from "./session-support.ts";
 import { aborted, type Deferred, deferred, openTasks, settled } from "./task-support.ts";
 
 // ─── A scriptable task ──────────────────────────────────────────────────────
@@ -1191,7 +1193,7 @@ function blockingTool(name: string): { started: Promise<void>; registration: Too
 		registration: defineTool({
 			name,
 			description: `The ${name} tool`,
-			parameters: Type.Object({}),
+			parameters: obj({}),
 			executionMode: "sequential",
 			execute: async (_args, api, callContext) => {
 				api.output("partial");
@@ -1217,7 +1219,7 @@ describe("tool rounds", () => {
 			defineTool({
 				name: "noop",
 				description: "Does nothing",
-				parameters: Type.Object({}),
+				parameters: obj({}),
 				execute: async () => ({ output: [] }),
 			}),
 		);
@@ -1253,7 +1255,7 @@ describe("tool rounds", () => {
 		const results = (await allEntries(root)).filter((entry) => ToolResultEntry.is(entry));
 		expect(results.map((entry) => (entry.model![0] as ToolResultMessage).toolCallId)).toEqual(["c1", "c2"]);
 		expect(await harness.snapshot(LiveDoc, root.id, context)).toEqual({
-			runFailure: { taskId: generation, inputs: [submission.id], reason: "aborted" },
+			runFailure: { taskId: generation, inputs: [submission.id], reason: "aborted", first: expect.any(Number) },
 		});
 		expect((await harness.waitForTask(generation, context)).state.outcome.status).toBe("aborted");
 		await harness.close(context);
@@ -1297,7 +1299,7 @@ describe("tool rounds", () => {
 			defineTool({
 				name: "noop",
 				description: "Does nothing",
-				parameters: Type.Object({}),
+				parameters: obj({}),
 				execute: async () => ({ output: [] }),
 			}),
 		);
@@ -1361,19 +1363,20 @@ describe("tool rounds", () => {
 		let reject: TaskId | undefined;
 		const failure = new Error("disk gone");
 		class Failing extends ControlledStorage {
-			override async commit(
-				writes: Parameters<MemoryStorage["commit"]>[0],
-				adopt: Parameters<MemoryStorage["commit"]>[1],
+			override commit(
+				batches: Parameters<MemoryStorage["commit"]>[0],
+				receive: Parameters<MemoryStorage["commit"]>[1],
 				ctx: Parameters<MemoryStorage["commit"]>[2],
 			) {
-				const finalizes = writes.some(
-					(write) => write.type === "task" && write.value.id === reject && write.value.state.status === "terminal",
-				);
-				if (finalizes) {
-					reject = undefined;
-					throw failure;
-				}
-				return super.commit(writes, adopt, ctx);
+				const refuses = (writes: readonly StorageWrite[]): boolean => {
+					const finalizes = writes.some(
+						(write) =>
+							write.type === "task" && write.value.id === reject && write.value.state.status === "terminal",
+					);
+					if (finalizes) reject = undefined;
+					return finalizes;
+				};
+				return refusingAt((...args) => super.commit(...args), batches, receive, ctx, refuses, failure);
 			}
 		}
 		const storage = new Failing();
@@ -1407,6 +1410,7 @@ describe("tool rounds", () => {
 				inputs: [submission.id],
 				reason: "faulted",
 				detail: "Value contains a non-JSON function; expected strict JSON",
+				first: expect.any(Number),
 			},
 		});
 		expect((await allEntries(reopened.root)).map((entry) => entry.kind)).toEqual(["pi.user", "pi.assistant"]);
@@ -1646,19 +1650,20 @@ describe("conversation abort and boundaries", () => {
 		let reject: TaskId | undefined;
 		const failure = new Error("disk gone");
 		class Failing extends ControlledStorage {
-			override async commit(
-				writes: Parameters<MemoryStorage["commit"]>[0],
-				adopt: Parameters<MemoryStorage["commit"]>[1],
+			override commit(
+				batches: Parameters<MemoryStorage["commit"]>[0],
+				receive: Parameters<MemoryStorage["commit"]>[1],
 				ctx: Parameters<MemoryStorage["commit"]>[2],
 			) {
-				const finalizes = writes.some(
-					(write) => write.type === "task" && write.value.id === reject && write.value.state.status === "terminal",
-				);
-				if (finalizes) {
-					reject = undefined;
-					throw failure;
-				}
-				return super.commit(writes, adopt, ctx);
+				const refuses = (writes: readonly StorageWrite[]): boolean => {
+					const finalizes = writes.some(
+						(write) =>
+							write.type === "task" && write.value.id === reject && write.value.state.status === "terminal",
+					);
+					if (finalizes) reject = undefined;
+					return finalizes;
+				};
+				return refusingAt((...args) => super.commit(...args), batches, receive, ctx, refuses, failure);
 			}
 		}
 		const storage = new Failing();
@@ -1822,7 +1827,7 @@ describe("tool rounds as the view shows them", () => {
 			defineTool({
 				name: "noop",
 				description: "Does nothing",
-				parameters: Type.Object({}),
+				parameters: obj({}),
 				execute: async () => ({ output: [] }),
 			}),
 		);
@@ -1862,7 +1867,7 @@ describe("tool rounds as the view shows them", () => {
 			defineTool({
 				name: "delegate",
 				description: "Starts work in a conversation it owns",
-				parameters: Type.Object({}),
+				parameters: obj({}),
 				execute: async (_args, api, callContext) => {
 					await api.commit(async (tx) => {
 						const child = await tx.createConversation({ ownership: { kind: "task", taskId: api.taskId } });
@@ -1902,7 +1907,7 @@ describe("tool rounds as the view shows them", () => {
 			defineTool({
 				name: "broken",
 				description: "Starts owned work, then returns a result that is not strict JSON",
-				parameters: Type.Object({}),
+				parameters: obj({}),
 				execute: async (_args, api, callContext) => {
 					await api.commit((tx) => tx.createTask(Node, { name: "held" }, owned(api.taskId)), callContext);
 					return { output: [], details: { fn: (() => 1) as unknown as JsonValue } };

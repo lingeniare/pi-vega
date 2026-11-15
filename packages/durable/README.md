@@ -81,7 +81,7 @@ Every async call takes a Chord `Context`, which carries cancellation and its cur
 
 `HarnessOptions.telemetry` accepts a host-owned `TelemetryContext` from `@earendil-works/pi-telemetry`, with optional `propagation` and `metrics` capabilities; omitted, it is a no-op. `DURABLE_TELEMETRY_SCHEMA`, exported from the package root, documents its typed spans, events, and metrics. Attributes contain IDs and control metadata, never messages, arguments, or results; IDs point to the transcript.
 
-- `pi.durable.submit` covers the public submit call and its commit. Each input starts a new root trace with a link to its caller's current span; a write is a child of its caller. Duplicate `requestId` preserves the original submission and carrier. Internal admissions, such as compaction writes, emit events on their phase span without a submit span.
+- `pi.durable.submit` covers the public submit call and its commit; for `submit(tx, draft)` it covers the admission only, its `result` is provisional until your commit is stored, and the commit's events go to your commit's context. Each input starts a new root trace with a link to its caller's current span; a write is a child of its caller. Duplicate `requestId` preserves the original submission and carrier. Internal admissions, such as compaction writes, emit events on their phase span without a submit span.
 - `pi.durable.phase` covers one run or abort phase of every task, including its decision commit, never the next phase, a durable wait, or a restart. Its attributes identify the task, phase, attempt when present, `resumed`, and outcome. Tool phases also identify the tool and call. Nested tasks and background compactions inherit the creating phase; model requests receive that phase context. Hooks add no spans.
 - Failed phase outcomes set error status with a fixed category (`task_faulted`, `task_failed`, or `task_orphaned`) and the outcome's diagnostic message, truncated to 500 characters (the reason for an orphaned task). Diagnostics can contain caller content; no error detail or exception name is recorded. An `aborted` outcome keeps status `ok`, including interruption by close or cancellation.
 - Every `onReport` report also emits a `pi.durable.report` event on its current span. Without a span, the NOOP span drops the event; no root report span is created. Only `type` (the report's `kind`), optional fixed `reason`, `extension`, and `task.id` are recorded; no error payload is included. `pi.durable.reports` counts all reports by `type` only, including those without a span. Clock failures report without a phase context. The `onReport` callback is unchanged.
@@ -124,7 +124,7 @@ const root = await harness.root(context); // the same root as last time
 harness.resume(); // continue any run the last process left unfinished
 ```
 
-Work interrupted by a crash or close stays pending. `resume()` starts the task scheduler; submitting or waiting starts it too. A process that only shows a session another one drives opens it with `readOnly: true`: open recovers nothing, and every write, `resume()`, and every call that would run tasks rejects with `ReadOnlySession`. Each conversation has its own persisted UUIDv7 in `pi.provider`, forwarded to pi-ai as `sessionId` for provider prompt-cache and session affinity. It survives reopen, retries, reset, compaction, and model changes; a child or fork receives a fresh identity. A legacy conversation receives and persists one before its first generation or compaction request.
+Work interrupted by a crash or close stays pending. `resume()` starts the task scheduler; submitting or waiting starts it too. A process that only shows a session another one drives opens it with `readOnly: true`: open recovers nothing, and every write, `resume()`, and every call that would run tasks rejects with `ReadOnlySession`. That option covers the Harness, not the storage open before it: open JSONL storage with `openNodeJsonlStorage(directory, context, { readOnly: true })` too, since a writable JSONL open repairs files the writer may be appending to (see [Storage](#storage)). SQLite storage opens as usual: SQLite's file locks keep it safe beside the writer. Each conversation has its own persisted UUIDv7 in `pi.provider`, forwarded to pi-ai as `sessionId` for provider prompt-cache and session affinity. It survives reopen, retries, reset, compaction, and model changes; a child or fork receives a fresh identity. A legacy conversation receives and persists one before its first generation or compaction request.
 
 A retried submission with the same `requestId` returns the existing submission instead of submitting twice:
 
@@ -159,7 +159,7 @@ const Reminder = defineTask<{ text: string; at: number }, { phase: "wait" } | { 
 });
 ```
 
-There is no sleep in the middle of a phase: a phase reruns from its top after a restart, so work after the wait goes in the next phase, and what it needs goes in the checkpoint. `{ status: "sleeping", until, checkpoint }` returned from `runtime.commit()` is the same sleep, committed together with other writes. Retry backoffs and deferred-response polls of the built-in tasks sleep the same way.
+There is no sleep in the middle of a phase: a phase reruns from its top after a restart, so work after the wait goes in the next phase, and what it needs goes in the checkpoint. `{ status: "sleeping", until, checkpoint }` returned from `runtime.commit()` is the same sleep, committed together with other writes; with `signals` it also wakes on a signal (see [Signals](#signals)), and `until` becomes optional. Retry backoffs and deferred-response polls of the built-in tasks sleep the same way.
 
 The timers of the Session, the scheduler, and its tasks go through `setTimer` (default `setTimeout`), and their times through `now` (default `Date.now`); pass both to run a Harness on a fake clock. The Node.js environment, file watcher, and image worker keep their own timers. Sleep deadlines are stored on `now`, so every process that opens one storage must use the same clock. While scheduling runs, a timer resumes sleeping tasks when they are due and keeps a Node.js process alive meanwhile.
 
@@ -192,8 +192,8 @@ export class Session extends DurableObject<Env> {
 		this.#harness.resume(); // due sleeps and work a lost instance left
 	}
 
-	// Arm before any call that can start work (submit, compact, abortTask, abort, a registry change): `onWake` runs
-	// after the commit. An early alarm is harmless, a missing one strands the work.
+	// Arm before any call that can start work (submit, signal, compact, abortTask, abort, a registry change): `onWake`
+	// runs after the commit. An early alarm is harmless, a missing one strands the work.
 	async submit(conversation: Conversation, input: string, requestId: string): Promise<void> {
 		await this.#arm({ ...this.#harness.wake(), active: true });
 		await conversation.submit({ type: "input", content: input, requestId }, context);
@@ -211,13 +211,62 @@ export class Session extends DurableObject<Env> {
 
 The default `setTimer` declines the timers that only free memory in Workers, so no pending timer keeps the object from hibernating or being evicted; memory is then freed at later commits.
 
+### Signals
+
+A signal is a typed JSON value delivered to a live task from outside: a webhook's result, a person's answer. The task sleeps on a key and holds no process meanwhile; `harness.wake()` is not `active` for it, and `at` is its deadline, if any. Define a signal kind with a pi-schema schema, sleep on one of its keys, and read the value after the wake:
+
+```typescript
+import { obj, str } from "@earendil-works/pi-schema";
+import { defineSignal, defineTask } from "@earendil-works/pi-durable";
+
+const HOUR = 60 * 60 * 1000;
+const Answer = defineSignal({ name: "app.answer", version: 1, schema: obj({ text: str() }) });
+
+const AskPerson = defineTask<{ question: string }, { phase: "ask" } | { phase: "answered" }, string | null>({
+	name: "app.ask-person",
+	version: 1,
+	initial: () => ({ phase: "ask" }),
+	phases: {
+		// Wakes on the answer, or after four hours, whichever comes first.
+		ask: (_task, runtime, context) =>
+			runtime.commit(
+				() => ({
+					status: "sleeping",
+					signals: [Answer.key("answer")],
+					until: runtime.now() + 4 * HOUR,
+					checkpoint: { phase: "answered" },
+				}),
+				context,
+			),
+		answered: async (task, runtime, context) => {
+			// task.state.wake says why: { reason: "signal", signal, key } or { reason: "expired" }.
+			const state = await runtime.readSignal(Answer, "answer", context); // { value }, { expired: true }, or undefined
+			const text = state !== undefined && "value" in state ? state.value.text : null;
+			await runtime.commit(() => ({ status: "terminal", outcome: { status: "completed", result: text } }), context);
+		},
+	},
+	abort: (_task, runtime, context) =>
+		runtime.commit(() => ({ status: "terminal", outcome: { status: "aborted" } }), context),
+});
+
+// Whatever shows the question (an inbox, a chat bridge) keeps the task ID and delivers the answer:
+const result = await harness.signal(taskId, Answer, "answer", { text: "Yes" }, context);
+```
+
+- **Results:** `delivered` (durably kept), `duplicate` (the key already holds a value, as for a webhook retry), `invalid` (not matching the schema), `closed` (the task ended or was aborted, or the deadline came first), `not_found`. Hosts answer `duplicate` and `closed` to the sender as final. `tx.signal()` delivers inside your own commit, before its first table write. Nothing checks who sends a signal: authenticate senders in your host.
+- **Early signals:** a value that arrives before the task sleeps on its key is kept, and the sleep wakes at once.
+- **One wait per key:** the wake that uses a key consumes it, and a second sleep on it is rejected. A second wait for the same kind of signal uses a new key (`ci-1`, `ci-2`).
+- **Small values:** values live in the task record. Send a reference (a document ID, a CI run ID) for anything large.
+- **Waking on tasks:** a `waiting` state with `policy: "any"` resumes once one task in `on` ends; `task.state.wake` is then `{ reason: "tasks", ended }`.
+- **Submissions:** a submission with `notify: { taskId, key }` delivers the built-in `SubmissionSettled` signal, the record `wait()` resolves to, to that task when it settles, which is how a tool waits for a subagent without holding a process (see [Tools that park](#tools-that-park)).
+
 ### Failures and Recovery
 
 **Crash loops.** Work that deterministically crashes its process, by exhausting memory or CPU before its next checkpoint, would otherwise be resumed and crash again forever. A model request the host died during is a failed attempt under `settings.retry`: its partial answer is kept as an aborted entry, the next attempt waits for the backoff (shown in `docs["pi.live"].generation.retry`), and with no retry left the run ends with `docs["pi.live"].runFailure` reason `interrupted`. A deferred response that was being fetched is polled again as the next attempt, not requested again, and cancelled when the run ends. A close is not a crash: a request it stopped is sent again. Other work is counted: open counts each task a crash, eviction, or reset cut off, and a new state the task commits starts the count over. Once the count reaches `settings.restartLimit` (default 5; `Infinity` never ends a task for it), the task ends instead of running again: a tool call with an error result (diagnostic code `restart_limit`), a compaction failed into `compactionFailure`, a run with `runFailure` reason `restart_limit` (also when charging an interrupted request keeps crashing), and a task of your own kinds `faulted`, reported as `task_faulted` with reason `restart_limit`. The built-in ones are reported as `task_interrupted`, as is a run that ends `interrupted`, so a crash loop always reaches `onReport`. Every task running when a process dies is counted, not only the one that killed it. An abort handler cut off that many times ends its task `faulted` too; a run someone aborted still ends `aborted`, with the cut-off in `detail`.
 
 **Reports.** `onReport(report)` gets one `Report`: the `error` and what happened in `report.kind`: `storage_failed` for the error that failed the Harness (a Storage error, often a platform reset); `task_faulted`, `task_interrupted` (crashes ended it, with `report.reason` and `report.restarts`), `migration_failed`, `task_outdated` (`reason` `missing_task`, `task_too_old`, or `migration_failed`, the words a blocked task shows), or `task_error` for a task, with `report.task` (its `id`, `kind`, and `conversationId`) and the extension that installed it in `report.extension`; `extension_error` for hooks, sections, wrappers, and tools, with the extension's name; `host_error` for a host callback, named in `report.callback`; and `listener_error`. A host can feed `task_faulted` reports of one kind to its own breaker.
 
-**Queued inputs after a failed run.** A run that fails with a model error, a missing model, or crashes (`interrupted`, `restart_limit`) leaves the inputs queued behind it waiting until the next input arrives. `settings.afterFailedRun` changes that: `continue` starts the next run with them, as after an answer, and `withdraw` settles them `unanswered` with reason `run_failed`.
+**Queued inputs after a failed run.** A run that fails with a model error, a missing model, nothing to answer, its turn limit, or crashes (`interrupted`, `restart_limit`) leaves the inputs queued behind it waiting until the next input arrives. `settings.afterFailedRun` changes that: `continue` starts the next run with them, as after an answer, and `withdraw` settles them `unanswered` with reason `run_failed`.
 
 **Blocked tasks.** Tasks blocked on a missing or unmigratable definition show their reason in the task graph too, and a registry change that unblocks them makes `onWake` report the Session active, so a host need not poll them.
 
@@ -255,17 +304,27 @@ import { createCodingTools } from "@earendil-works/pi-durable/tools";
 registry.install(createCodingTools({ images: await createNodePhotonImages() }));
 ```
 
-A model without image input sees a placeholder instead of the image, and `read` says so in a diagnostic. `/images/node` prepares images in a worker thread, so a large photo (a second or two of work) never blocks the event loop; the worker exits after 30 s without images, freeing Photon's WebAssembly memory (`createNodePhotonImages({ worker: false, idleMs })`). Elsewhere, `createPhotonImages()` and `/images/cloudflare` work on the calling thread, and decoding takes the image's full size in WebAssembly memory, which does not shrink again; leave the processor out on memory-constrained hosts such as Cloudflare Workers unless images stay small.
-
-Define your own tool with a TypeBox schema. `defineTool()` types `args` from `parameters`, which the Harness validates before `execute()`. `api.output()` streams running output, which becomes the result when `execute()` returns no `output`:
+Images also reach the model through other tools' results (an MCP tool, code mode's `image()`) and through a host's input. `@earendil-works/pi-durable/images/fit` fits those to the conversation model's limits with any processor, before they are stored, so the transcript, and the provider's prompt cache, never changes later. `createFitImagesExtension(images)` is an `afterTool` hook for every result the model gets, and says what changed in an `info` diagnostic; `fitImage(bytes, mimeType, imageLimits(model), images)` fits an attachment before the host submits it, and returns notes for the model. Every image is decoded, as the coding agent does, so a damaged one never reaches the transcript; one that cannot be prepared is left out with a note.
 
 ```typescript
-import { Type } from "@earendil-works/pi-ai";
+import { createFitImagesExtension } from "@earendil-works/pi-durable/images/fit";
+
+const images = await createNodePhotonImages();
+registry.install(createCodingTools({ images }));
+registry.install(createFitImagesExtension(images));
+```
+
+A model without image input sees a placeholder instead of the image, decided per request, so an image read under such a model still reaches a vision model the conversation switches to; `read` names such a model in `details.imageUnsupportedByModel` for UIs. `/images/node` prepares images in a worker thread, so a large photo (a second or two of work) never blocks the event loop; the worker exits after 30 s without images, freeing Photon's WebAssembly memory (`createNodePhotonImages({ worker: false, idleMs })`). Elsewhere, `createPhotonImages()` and `/images/cloudflare` work on the calling thread, and decoding takes the image's full size in WebAssembly memory, which does not shrink again; leave the processor out on memory-constrained hosts such as Cloudflare Workers unless images stay small.
+
+Define your own tool with a JSON Schema, built here with `@earendil-works/pi-schema`. `defineTool()` types `args` from `parameters` (through pi-schema's `Static`; other JSON Schema gives `unknown`), which the Harness coerces and validates before `execute()`. `api.output()` streams running output, which becomes the result when `execute()` returns no `output`:
+
+```typescript
+import { num, obj, str } from "@earendil-works/pi-schema";
 
 const count = defineTool({
 	name: "count",
 	description: "Count from 1 to n",
-	parameters: Type.Object({ n: Type.Number() }),
+	parameters: obj({ n: num() }),
 	execute: async (args, api) => {
 		for (let i = 1; i <= args.n; i++) api.output(`${i}\n`);
 		return {};
@@ -282,8 +341,8 @@ A result has three channels: `output` for the model, `structuredOutput` for prog
 const lines = defineTool({
 	name: "lines",
 	description: "Count the lines of a file",
-	parameters: Type.Object({ path: Type.String() }),
-	structuredOutputSchema: Type.Object({ lines: Type.Number() }),
+	parameters: obj({ path: str() }),
+	structuredOutputSchema: obj({ lines: num() }),
 	execute: async (args, api, context) => {
 		const text = await readText(api, args.path, context);
 		const count = text.split("\n").length;
@@ -292,7 +351,7 @@ const lines = defineTool({
 });
 ```
 
-A missing, undeclared, or invalid `structuredOutput` turns a nested call's result into an error result with an `invalid_structured_output` diagnostic; for a call the model made, which never sees it, it is dropped and reported through `onReport`. An error result may omit it, and programs then find its text in a `tool_error` diagnostic; error results the Harness writes itself (blocked, invalid, interrupted, aborted) carry none, and their `diagnostics` say what went wrong. An `afterTool` hook that redacts a schema tool's `output` must redact its `structuredOutput` too. The built-in `bash` returns `{ output, truncated, fullOutputPath?, exitCode }`, where `output` is the retained tail the model sees, read with `api.retainedOutput()`, and answers a nonzero exit with an error result that still carries it.
+A missing, undeclared, or invalid `structuredOutput` turns a nested call's result into an error result with an `invalid_structured_output` diagnostic; for a call the model made, which never sees it, it is dropped and reported through `onReport`. An error result may omit it, and programs then find its text in a `tool_error` diagnostic; error results the Harness writes itself (blocked, invalid, interrupted, aborted) carry none, even when an `afterTool` hook returns one, and their `diagnostics` say what went wrong; one a hook turns into a success gives a schema-less tool's program its output. An `afterTool` hook that redacts a schema tool's `output` must redact its `structuredOutput` too. The built-in `bash` returns `{ output, truncated, fullOutputPath?, exitCode }`, where `output` is the retained tail the model sees, read with `api.retainedOutput()`, and answers a nonzero exit with an error result that still carries it. The built-in `read` returns a text file's text as a string and an image as its `ImageContent`, which code mode's `image()` shows.
 
 A later extension's tool with the same name replaces an earlier one where both are selected, and `wrapTool()` decorates whichever tool won:
 
@@ -312,7 +371,7 @@ A tool calls another tool with `api.executeTool()`, as a code mode script or an 
 const testsPass = defineTool({
 	name: "tests_pass",
 	description: "Run the test suite and say whether it passed",
-	parameters: Type.Object({}),
+	parameters: obj({}),
 	execute: async (_args, api, context) => {
 		const run = await api.executeTool("bash", { command: "npm test" }, context, { progress: false });
 		// Absent when bash did not finish, for example on a timeout.
@@ -329,6 +388,48 @@ const testsPass = defineTool({
 - A nested call's `usage` is counted under its own tool; passing it on in the caller's result counts it twice.
 - Nested results are not kept: they live in the caller's task documents (`NestedCallDoc`, one per nested call, keyed by its key, holding `{ taskId, result? }`) only until the caller settles. The nested call's task record keeps only a small receipt. A stored result is exactly what `executeTool()` returns, without the model's `output`, so an image or a `bash` tail is stored once.
 - Nothing bounds how deeply calls nest; a tool with the default `callers` may even call itself. Restrict `callers` where that matters (below).
+
+### Tools that park
+
+A tool that waits for the outside world (a CI webhook, a person, a slow job) returns a park instead of a result: `{ sleep: { signals?, until?, checkpoint? } }` or `{ wait: { on, policy, checkpoint? } }` for tasks the call owns. The call then holds no process. Once woken, `execute()` runs again with the same arguments, `api.wake` saying why and `api.checkpoint` holding what it parked with; on a fresh call both are `undefined`. `cancel` cleans up external work when the call is stopped while parked:
+
+```typescript
+const HOUR = 60 * 60 * 1000;
+const CiResult = defineSignal({ name: "app.ci-result", version: 1, schema: obj({ status: oneOf(["passed", "failed"]), logUrl: str() }) });
+const CiParameters = obj({ ref: str() });
+
+const runCi = defineTool<typeof CiParameters, JsonValue, { buildId: string }>({
+	name: "run_ci",
+	description: "Run CI on a git ref and report the result",
+	parameters: CiParameters,
+	replay: "safe",
+	async execute({ ref }, api, context) {
+		const state = await api.readSignal(CiResult, "done", context);
+		if (state !== undefined && "value" in state) {
+			return { output: [{ type: "text", text: `CI ${state.value.status}: ${state.value.logUrl}` }], isError: state.value.status !== "passed" };
+		}
+		if (state !== undefined) return { output: [{ type: "text", text: "CI never reported" }], isError: true };
+		// A fresh call. The tool's own idempotency key, memoized before the external call, so a rerun finds the same build.
+		const runId = await api.memo("ci.run", crypto.randomUUID(), context);
+		await webhooks.expect(runId, api.taskId, CiResult, "done", context); // your registry: the webhook signals this task
+		const build = await ci.trigger({ ref, idempotencyKey: runId }, context);
+		return { sleep: { checkpoint: { buildId: build.id }, signals: [CiResult.key("done")], until: api.now() + 2 * HOUR } };
+	},
+	// Runs when the call is stopped while parked; may run more than once.
+	async cancel(_args, api, context) {
+		if (api.checkpoint !== undefined) await ci.cancel(api.checkpoint.buildId, context);
+		else await ci.cancelByKey((await api.memo<string>("ci.run", context))!, context);
+	},
+});
+```
+
+- **Crashes:** a crash before the park is stored reruns a replay-safe `execute()`, which is why the idempotency key is memoized first. A restart while the call is parked runs no tool code, also for a tool that is not replay-safe, and keeps its nested calls and children.
+- **`cancel`:** runs when a parked call, or a woken one cut off before it parked again, is aborted, and before a woken replay-unsafe run ends `interrupted`. It also runs in the run itself when an abort mark refuses its park, with that park's checkpoint, which was never stored. In it, `api.wake` is `undefined`, `api.checkpoint` is the last park's, and it cannot start nested calls or tasks. It does not run for a first run cut off before it parked: find that work by the idempotency key.
+- **Parallel children:** `api.executeTool(name, args, context, { key, wait: false })` starts a nested call and returns `{ taskId, result(context) }` at once; park with `{ wait: { on: [taskId, ...], policy: "any" } }` and read `api.wake.ended`. `api.createTask(task, input, { ownership, key })` finds the same task again by key. After a wake, nested calls and child tasks need explicit keys, since positions may mean other calls. Awaiting `executeTool()` normally keeps the caller's process even while the nested call is parked.
+- **Subagents:** submit to the child with `notify: { taskId: api.taskId, key: "answered" }` and park on `SubmissionSettled.key("answered")`; the child's settled record is the signal's value.
+- **Slots and results:** a parked call's `pi.live` slot is `sleeping` or `waiting`, without output; details and diagnostics carry over to the next run. `durationMs` is the whole span from the call's start, parks included. A park that breaks a rule (both `sleep` and `wait`, a used key, a task the call does not own) ends the call with an `invalid_park` error result. Wrappers never park: they return their base's park unchanged.
+
+Examples [40](test/examples/40-tool-waits-for-webhook.ts) to [43](test/examples/43-subagent-waits.ts) run each pattern with a crash or a Stop.
 
 ### Who may call a tool
 
@@ -363,7 +464,7 @@ import { createCodemodeExtension } from "@earendil-works/pi-durable/codemode";
 registry.install(createCodemodeExtension({ sandbox: new CodemodeSandbox({ memoryLimitBytes: 256 * 1024 * 1024 }) }));
 ```
 
-The extension also adds a `codemode` prompt section listing the tools scripts can call, as TypeScript declarations within a token budget; scripts find the others with `searchTools()`, `describeTool()`, and `describeNamespace()`. Group tools by name prefix with `namespaces: [{ name, description, prefix }]`, for example an MCP server's `mcp__github__`. The result reads like the coding agent's: a header, the script's output, and on failure the calls already made; text past `max_output_tokens` is cut, with the full text in a temp file. Scripts also get `models.*`: the model catalog, `models.classify()`, and `models.generateImages()`, which run as nested calls of internal tools (`models: false` turns them off). On Cloudflare, pass a `RemoteCodemodeSandbox` instead. Closing the sandbox while a script runs (for example when shutting down) is not an outcome: the script resumes with the next process's sandbox. A failed nested call rejects in the script with its error text, unless the tool declares a schema and returned its own value with the error: `tools.bash` resolves with `{ output, exitCode, ... }` also for a nonzero exit, so scripts check `exitCode`. `store(key, value)` and `load(key)` keep JSON values per conversation; a fork sees them as they were at its entry.
+The extension also adds a `codemode` prompt section listing the tools scripts can call, as TypeScript declarations within a token budget; scripts find the others with `searchTools()`, `describeTool()`, and `describeNamespace()`. Group tools into namespaces by declaring one on the extension that brings them, `namespace: { name, description, instructions? }`, for example one extension per MCP server: the section lists every selected extension's namespace with its one-line description (also before it has tools), and `describeNamespace()` returns its instructions. The result reads like the coding agent's: a header, the script's output, and on failure the calls already made; text past `max_output_tokens` is cut, with the full text in a temp file. Scripts also get `models.*`: the model catalog, `models.classify()`, and `models.generateImages()`, which run as nested calls of internal tools (`models: false` turns them off). On Cloudflare, pass a `RemoteCodemodeSandbox` instead. Closing the sandbox while a script runs (for example when shutting down) is not an outcome: the script resumes with the next process's sandbox. A failed nested call rejects in the script with its error text, unless the tool declares a schema and returned its own value with the error: `tools.bash` resolves with `{ output, exitCode, ... }` also for a nonzero exit, so scripts check `exitCode`. `store(key, value)` and `load(key)` keep JSON values per conversation; a fork sees them as they were at its entry.
 
 How it survives a restart: the sandbox runs the script deterministically (a virtual clock, seeded randomness, UTC), and the tool writes each result the script gets to a journal before handing it over. After a restart, the tool runs the script again and hands it the journaled results in the same order, so it makes the same calls with the same arguments; these reattach to their nested calls by key, and then the script continues. A rerun ends the call with an error instead when the script takes another path than before, when the sandbox's fingerprint or the code mode version changed, or when its `timeout_ms` passed meanwhile. A nested call running at the restart follows its own replay policy.
 
@@ -391,6 +492,7 @@ await root.configure(
 		modelTools: [readTool], // of those, offer the model only read; tools may still call bash
 		instructions: "Only read; never edit files.",
 		cwd: "/work/repo",
+		maxTurns: 50, // tool rounds one run takes at most; unset: no limit
 	},
 	context,
 );
@@ -399,6 +501,8 @@ const agent = await root.agent(context); // resolved: model, extensions, tools, 
 ```
 
 Extensions and tools are passed as objects and stored by name, so a stored name outlives its code: after an extension is uninstalled, conversations that select it just stop getting it until it is installed again. `createConversation()`, `fork()`, and `root()` take the same change as `agent`. A task-owned conversation, such as a subagent's, starts as a copy of its owner's conversation's agent. A fork starts with the agent its parent had at the fork entry. The model, prompt, and offered tools of a request are fixed when it is prepared; a change applies from the next request. Tool calls and hooks use the agent as their task phase resolves it, and the environment is built from the current `cwd` at each use, so a `cwd` or extension change can reach calls the model already made.
+
+**Turn limits.** `maxTurns` bounds the tool rounds one run takes: the round that reaches it still runs its tools, then the run ends `unanswered` with `turn_limit`, like a failed run (`runFailure`, and `settings.afterFailedRun` decides the inputs queued behind it). An answer always ends the run, so it is never cut off. The count is `docs["pi.live"].run.turns`; it survives restarts, and every run starts at 0, also one a continue starts (see [Busy Conversations](#busy-conversations)), so a host or tool that continues automatically gets a fresh budget each time and must bound that itself. An `onYield` continuation also starts the count over: an extension that keeps a run going bounds its own loop, reading `pi.live.run.turns` and `pi.agent.maxTurns` with `api.snapshot`. `configure()` throws a `RangeError` for anything but an integer 1 or more (or `null`); a change applies at the end of the current round, and children and forks inherit it like the rest of the agent.
 
 ## Settings
 
@@ -415,7 +519,7 @@ const harness = await Harness.open(storage, {
 		compaction: { reserveTokens: 16384 },
 		progress: { partialIntervalMs: 100, outputIntervalMs: 100, persistWithinMs: 1_000 },
 		toolExecution: "parallel",
-		contextRetentionMs: 600_000, // idle conversations keep their context in memory this long (checked lazily where background timers are declined, as in Workers)
+		contextRetentionMs: 600_000, // inactive conversations (idle, or all live work parked) keep their context in memory this long (checked lazily where background timers are declined, as in Workers)
 		documentRetentionMs: 600_000, // loaded documents nothing observes stay in memory this long after their last use; observed ones always
 		get followUpMode() {
 			return userSettings.followUpMode;
@@ -515,7 +619,7 @@ const resumed = await root.watch(context, transcript.resume);
 
 Entries never change once committed, so a merge only adds; one that adds nothing returns the same `items` array. See `test/examples/31-transcript.ts`.
 
-Watches are Chord's `WatchHandle` (exported by `@earendil-works/chord`; Durable re-exports it). The listener gets one `WatchCall` per call, tagged by `kind`, and the newest commit's context: `{ kind: "value", value, ops, retired }`. Chord's watches also have `{ kind: "failed", error }` calls for failures a source recovers from; Durable's failures are final, so a Durable watch never sends one and ends instead. A watch ends once, and `closed` (or `stop()`) gives a `WatchEnd` tagged by `kind`: `stopped`, `aborted` (its acquisition context was aborted), `ended` (the Harness closed, or a task document's task ended), `listener_error`, or `failed` (the Harness failed). An ended watch keeps its last value and no longer references the Harness.
+Watches are Chord's `WatchHandle` (exported by `@earendil-works/chord/watch`; Durable re-exports it). The listener gets one `WatchCall` per call, tagged by `kind`, and the newest commit's context: `{ kind: "value", value, ops, retired }`. Chord's watches also have `{ kind: "failed", error }` calls for failures a source recovers from; Durable's failures are final, so a Durable watch never sends one and ends instead. A watch ends once, and `closed` (or `stop()`) gives a `WatchEnd` tagged by `kind`: `stopped`, `aborted` (its acquisition context was aborted), `ended` (the Harness closed, or a task document's task ended), `listener_error`, or `failed` (the Harness failed). An ended watch keeps its last value and no longer references the Harness.
 
 Adapters that must change in the same step as Durable's memory, such as a Chord source over a view, attach a synchronous observer instead of a watch: `harness.observeConversation(id, observer, context)`, `harness.observeTaskGraph(observer, context)`, and `harness.observeDoc(token, ...scope, observer, context)` return the current `value` and `detach()`, and call `observer.advance(call, context)` with every later change as a `WatchCall` (always a `value` call), unfolded, as memory adopts it: inside the storage's commit for a stored commit, at once for a deferred one (before it is stored). A document observer gets one call per change at its address, so a commit that retires and recreates the document gives two; the task graph also advances without a commit when a registry change alters a task's `blocked` reason. A change can arrive before the `observeXXX()` promise resolves; its ops apply from the observation's `value`. `observer.end(end)` comes once with a `WatchEnd`: `ended` when the Harness closes or, for a task document, right after the retirement of the commit that ends its task, `failed` when the Harness fails. `advance` only records the change: no awaits, no Harness calls, no throws, and quick, since every commit waits for it. One that throws (or returns a rejected promise) is reported, detached, and ended `listener_error`. Watches are built on these observers.
 
@@ -531,18 +635,45 @@ A conversation is busy while a run is working on an input. Submitting to a busy 
 await root.submit({ type: "input", content: "Also run the tests" }, context); // follow-up (default)
 await root.submit({ type: "input", content: "Use pnpm, not npm", whenBusy: "steer" }, context);
 await root.submit({ type: "input", content: "Only if idle", whenBusy: "reject" }, context); // throws ConversationBusy
+await root.submit({ type: "input", content: "Only if busy", whenBusy: "steer", whenIdle: "reject" }, context); // throws ConversationIdle when idle
 await root.submit({ type: "write", entry: { kind: "app.note", data: "user opened a file" } }, context);
 ```
 
 - **Steers** are placed after the current tool round and join the running work.
 - **Follow-ups** are placed when the run answers, and start the next run.
+- **`whenIdle: "reject"`** refuses an input when no run is working, so it never starts a run of its own. With `whenBusy: "steer"`, it steers the current run or throws `ConversationIdle`. A run that answered and waits for its [after-run tasks](#work-at-the-end-of-a-run) is still working, so such an input queues and starts the next run.
+- **`submit(tx, draft)`** admits inside your own commit, with the same rules, and returns the submission's ID. Your checks, the admission, and your writes are stored together or not at all:
+
+  ```typescript
+  const id = await harness.commit(async (tx) => {
+    const chat = await tx.doc(MyChat, root.id); // your own conversation document
+    if (chat.muted.includes(userId)) throw new Error("Muted");
+    const id = await root.submit(tx, { type: "input", content: text, whenBusy: "steer", whenIdle: "reject" });
+    chat.sent.push({ id, userId }); // your own state, same commit
+    return id;
+  }, context);
+  ```
+
+  Call it before the commit's own table writes (`appendEntry()`, `createTask()`, another admission), once per commit: otherwise it throws `ReadAfterWrite`, on every path. Documents may be read and written before and after it. A rejection (`ConversationBusy`, `ConversationIdle`) throws before any write, so you may catch it. Until your commit is stored the admission is provisional: if your callback throws later, no submission exists. Tasks and tools do the same in their own commits through `api.conversation(id)`; entries the admission places carry the task's `byTaskId`.
 - **Writes** append an entry without asking the model anything. A write of only `kind` and `data` changes nothing the model sees, so it is appended at once, even mid-run, and is never queued: a chat message shows in the transcript as soon as it is sent. It can therefore appear before items submitted earlier that are still queued, except behind a queued reset, where it waits so the reset does not hide it. A write with `model`, `head`, or `edits` waits for the next boundary like a steer.
 - `await submission.abort(context)` withdraws a queued submission.
 - The [settings](#settings) `steeringMode: "all"` and `followUpMode: "all"` place every queued item at once instead of one per turn.
 
-If a run fails, queued items stay in the inbox until the next input or queued write places them, oldest first.
+If a run fails, queued items stay in the inbox until the next input, queued write, or continue places them, oldest first.
 
-When a run ends without an answer, `docs["pi.live"].runFailure` says why until the next run starts: `model_error` and `no_model` (with the error text or the missing model in `detail`), `aborted`, `reset`, `interrupted` (the host stopped while the model answered, with no retry left), or `faulted`, `orphaned`, and `restart_limit` (the run's task could not go on). The run's inputs are in it too, settled `unanswered`; the settlement's reason is the same, except that an orphaned run's inputs carry why it was orphaned (`missing_task`, `task_too_old`, `migration_failed`) and `no_model` has no `detail` there (spec §8.2).
+When a run ends without an answer, `docs["pi.live"].runFailure` says why until the next run starts: `model_error` and `no_model` (with the error text or the missing model in `detail`), `aborted`, `reset`, `interrupted` (the host stopped while the model answered, with no retry left), `faulted`, `orphaned`, and `restart_limit` (the run's task could not go on), `turn_limit` (a tool round reached the conversation's `maxTurns`), or `nothing_to_answer` (a continue, below, found nothing to answer). The run's inputs are in it too, settled `unanswered`; the settlement's reason is the same, except that an orphaned run's inputs carry why it was orphaned (`missing_task`, `task_too_old`, `migration_failed`) and `no_model` has no `detail` there (spec §8.2).
+
+To resume such a run without typing a message, submit a continue. It starts a run on the context as it is, so the model answers the user message or tool results the stopped run left:
+
+```typescript
+const live = await harness.snapshot(LiveDoc, root.id, context);
+if (live?.run === undefined && live?.runFailure !== undefined) {
+	const resumed = await root.submit({ type: "continue" }, context); // throws ConversationBusy while busy
+	await resumed.wait(context); // done with the answer, or unanswered like any run
+}
+```
+
+A continue is never queued: it throws `ConversationBusy` while a run is working, since whether there is anything to continue depends on how that run ends. Items a failed run left queued are placed first and join the run. A context with nothing to answer (empty, or ending in an answer, also a text answer cut off at its output limit) ends the run without a request, `unanswered` with `nothing_to_answer`. A cut-off answer with tool calls can be continued: its calls never ran, so the context ends in their error results. Tools can continue the conversations they own through `api.conversation(id)`, as they submit to them.
 
 An input is placed as a `pi.user` entry. To show it as something else, give it an `entry` with your kind and data; the model still sees `content` as the user message:
 
@@ -607,6 +738,19 @@ settings: {
 
 The fixed token counts rarely suit a 32k and a 1M context window alike; `modelOverrides` lets one harness serve both. The conversation's current model picks the entry, at the threshold check, after a context overflow, and when a compaction selects what to summarize.
 
+One conversation can have its own compaction settings, of the same shape, stored in its agent like `maxTurns`:
+
+```typescript
+await root.configure({ compaction: { enabled: false } }, context); // no automatic compaction here, on any model
+await research.configure(
+	{ compaction: { keepRecentTokens: 60000, modelOverrides: { "local/small-32k": { keepRecentTokens: 12000 } } } },
+	context,
+);
+await root.configure({ compaction: null }, context); // back to the settings
+```
+
+Each field comes from the first layer that sets it: the conversation's `modelOverrides` entry, the settings' `modelOverrides` entry, the conversation's own fields, then the settings. So a model-specific value beats a general one, and the conversation beats the harness at the same level: above, `research` keeps 60000 tokens on a model without an override anywhere and 12000 on `local/small-32k`; without its own entry it would get the settings' 8000 there. The exception is `enabled: false` on the conversation, which also beats the settings' model overrides. A change replaces the stored settings as a whole; `configure()` throws a `RangeError` for a token count that is not an integer 0 or more. Children and forks inherit it like the rest of the agent.
+
 When a provider rejects a request because the context is too long, generation compacts and retries once. A summary that would cut before the start of the current context settles as `stale` when it is placed, so when several are in flight, the furthest cut stays in effect. Summarization spend counts in `pi.usage`. A `beforeCompact` hook on `CompactionTask` can decline or supply its own summary.
 
 When a compaction that a generation waits for at the blocking threshold fails, the generation fails too, without sending a request: its inputs settle `unanswered` with `model_error` and detail `Compaction failed: <error>`. One that finds nothing to compact or is declined lets the request go ahead.
@@ -629,10 +773,102 @@ const Guard = defineExtension({
 });
 ```
 
-- **Generation:** `beforeRequest` (replace the messages of one request), `afterResponse`, `onYield` (continue the run with another user message), and `afterTools` (runs once a round's tools are done).
-- **Tools:** `beforeTool` (block or rewrite arguments) and `afterTool` (replace the result).
+- **Generation:** `beforeRequest` (replace the messages of one request), `beforeProviderRequest` (replace the provider request body of one request, e.g. to set a provider-specific field), `afterResponse`, `onYield` (continue the run with another user message, or tasks that decide whether the answer stands), `afterTools` (runs once a round's tools are done; may return tasks to run before the round ends), and `afterRun` (tasks to run before the run ends). Tasks are built with `hookTask()` (below).
+- **Tools:** `beforeTool` (block, rewrite arguments, or make the call wait, below) and `afterTool` (replace the result). `afterTool` sees every result a tool task writes, also the error results the Harness writes itself (unavailable, invalid, blocked, interrupted, restart limit, aborted), told apart by their diagnostic code; past `settings.restartLimit` it no longer runs. On an abort it runs inside the abort handler, so a slow hook delays `abort()`.
 
 To limit a hook to some conversations, select its extension only there, for example with `configure({ extensions: { add: [Guard] } })`.
+
+Hooks read committed documents (`api.snapshot()`) and the conversation's raw history (`api.entry()`, `api.entries()`), which compaction never changes.
+
+### Gates before a tool runs
+
+A `beforeTool` hook can return `{ sleep: { signals?, until? } }` to park the call before it runs, for example until a person approves it. Every wake runs the call's checks again from the top, every `beforeTool` hook included, so the gate reads its key with `api.readSignal()` and passes, blocks, or sleeps again on a new key:
+
+```typescript
+const Approval = defineSignal({ name: "approvals.decision", version: 1, schema: obj({ allow: bool() }) });
+const DAY = 24 * 60 * 60 * 1000;
+
+const Approvals = defineExtension({
+	name: "approvals",
+	hooks: [
+		hook(ToolTask, {
+			beforeTool: async (call, api, context) => {
+				if (call.name !== "bash" || !isRisky(call.arguments)) return undefined;
+				const key = digest(call.arguments); // other arguments, another question
+				const state = await api.readSignal(Approval, key, context);
+				// One deadline per question: later passes reuse the memoized one.
+				const until = await api.memo(`approvals.until.${key}`, api.now() + DAY, context);
+				if (state === undefined) return { sleep: { signals: [Approval.key(key)], until } };
+				if ("expired" in state) return { block: "No approval within a day" };
+				return state.value.allow ? undefined : { block: "Not approved" };
+			},
+		}),
+	],
+});
+```
+
+- The first `block` or `sleep` stops the chain. The call executes only once a whole pass ends without either; after that, `beforeTool` never runs again for it.
+- The call's slot is `sleeping` meanwhile; whatever shows the question delivers the answer with `harness.signal()` and the slot's task ID.
+- Installing or removing extensions, and reopening the Harness, wake parked gates, so the gates installed now decide. Memoize deadlines, as above, and keep a gate's side effects idempotent: it runs again on every wake.
+- An approval binds to the arguments it saw; a later hook that rewrites them can run the call with arguments nobody approved. Order such extensions accordingly.
+- A sleep that breaks a rule (no `until` and no signals, a key that already served a wait) ends the call with an `invalid_park` error result.
+
+### Work at the end of a run
+
+An `afterRun` hook starts durable work after a run answered, without a tool call: for example the project's tests after a run that edited files. It returns tasks, built with `hookTask()`, and the generation creates them as its children and waits for them before the run ends:
+
+```typescript
+import { defineExtension, GenerationTask, hook, hookTask, ToolResultEntry } from "@earendil-works/pi-durable";
+
+const TestsAfterEdits = defineExtension({
+	name: "tests-after-edits",
+	tasks: [RunTests], // a task of yours, defineTask(): runs the tests, then commits its result
+	hooks: [
+		hook(GenerationTask, {
+			afterRun: async (run, api, context) => {
+				// The run's own entries, also those a compaction summarized.
+				const range = { minEntryId: run.first, maxEntryId: run.last, order: "ascending" } as const;
+				const { items } = await api.entries(range, 1000, undefined, context); // page with `next` for longer runs
+				const edited = items.some((entry) => {
+					const message = entry.model?.[0];
+					return ToolResultEntry.is(entry) && message?.role === "toolResult" && message.toolName === "edit";
+				});
+				return edited ? { tasks: [hookTask(RunTests, { command: "npm test" })] } : undefined;
+			},
+		}),
+	],
+});
+```
+
+- **When:** after a final answer or a `terminate` round, not while an `onYield` continuation keeps the run going, never after a failure or an abort.
+- **The answer first:** the answer is committed and the run's inputs settle `done` before the hooks are asked, so `Submission.wait()` resolves at the answer.
+- **Busy until done:** `pi.live.run` stays, with `run.afterRun` listing the tasks, so the conversation is busy and `waitForIdle()` includes them; Stop aborts them; a crash resumes them. A crash before they exist asks the hooks again, never twice once they do.
+- **Input meanwhile:** steers and follow-ups queue and start the next run once the tasks are done; `whenBusy: "reject"` and a continue throw `ConversationBusy`.
+- **Results for the model:** a task gets its conversation's handle before its commit, `const handle = (await runtime.conversation(runtime.conversationId, context))!`, and admits a write or a follow-up (say "the tests failed: ...") inside it with `handle.submit(tx, draft)`, before its own table writes. Both are placed when the run ends: a write before any queued user input, a follow-up in queue order with the rest. A follow-up starts a fix run, which asks `afterRun` again with a fresh turn budget, so cap such loops in your extension.
+- **Broken requests** (an uninstalled or built-in task, a non-JSON input, a throwing `initial()`) are reported through `onReport` against the hook's extension and skipped; the run still ends.
+
+### Work before an answer stands, and after a round
+
+`onYield` and `afterTools` hooks return tasks the same way, built with `hookTask()`, as children of the generation:
+
+```typescript
+const Reviewer = defineExtension({
+	name: "reviewer",
+	tasks: [Review, AskToGoOn], // tasks of yours
+	hooks: [
+		hook(GenerationTask, {
+			// Review completes with a YieldDecision: { continue: "Explain your reasoning." } sends the agent back.
+			onYield: async () => ({ tasks: [hookTask(Review, null)] }),
+			// AskToGoOn completes with an AfterToolsDecision: { terminate: true } ends the run after this round.
+			afterTools: async () => ({ tasks: [hookTask(AskToGoOn, null)] }),
+		}),
+	],
+});
+```
+
+- **`onYield` tasks decide whether an answer stands.** The answer is in the transcript, but the run's inputs stay open, so `Submission.wait()` and every caller see only an answer the tasks let stand. The task reads the answer's entry from `docs["pi.live"].run.yield.answer`. The first task, in creation order, that completes with a `{ continue }` holding a valid user input sends the agent back to work in the same run, unless a user message or a reset was queued meanwhile; an invalid one passes to the next task. Use this for reviews; use `afterRun` for work on an answer that stands, such as delivering it.
+- **`afterTools` tasks run before the round ends.** One that completes with `{ terminate: true }` ends the run, as a round whose calls all asked to terminate; one that wants the agent to change course submits a steer in its terminal commit. Any other result than `null` or an `AfterToolsDecision` is reported and ignored.
+- **Parking:** these tasks may sleep on a signal, for example a person's answer, so the Session holds no process while it waits.
 
 ## More Conversations and Forks
 
@@ -656,7 +892,7 @@ const Subagent: Extension = defineExtension({
 		defineTool({
 			name: "subagent",
 			description: "Delegate a self-contained task to a subagent and get its answer back.",
-			parameters: Type.Object({ task: Type.String() }),
+			parameters: obj({ task: str() }),
 			replay: "safe", // a rerun after a crash finds the same child and submission
 			execute: async (args, api, context) => {
 				const child = await api.commit(async (tx) => {
@@ -711,7 +947,7 @@ decide: async (task, runtime, context) => {
 },
 ```
 
-- **Waiting:** the task runs no code while it waits. With `allSettled` it resumes once every task in `on` is done; with `failFast` the first failed child also aborts the others. `on` may name other tasks too, with `allSettled`.
+- **Waiting:** the task runs no code while it waits. With `allSettled` it resumes once every task in `on` is done; with `failFast` the first failed child also aborts the others; with `any` it resumes once one is done, and `task.state.wake` (`{ reason: "tasks", ended }`) lists the ended ones. `on` may name other tasks too, with `allSettled` or `any`.
 - **Finishing:** a task that finishes while work it owns is still running is `completing`: its outcome is decided, but it becomes terminal, and `waitForTask()` returns, only once that work is done. A failed or aborted outcome aborts that work first.
 - **Aborting:** abort runs bottom-up. Aborting a task aborts the work it owns first, and its own abort handler starts only once that work is done, so each task undoes its own effects.
 
@@ -732,7 +968,7 @@ graph.start(async (call) => {
 });
 ```
 
-A task appears with the commit that creates it and leaves with the commit that makes it terminal. Statuses are the committed ones: `pending`, `running`, `waiting` (with `on` and `policy`), and `completing` (with the held outcome's status). After a restart, tasks that were `running` show as `pending` until they run again. Whether a pending task is blocked by a missing definition is not part of the graph; `harness.inspect()` reports that. The graph lists live tasks only: once a subagent's owner task is terminal, a later task in its conversation is a top-level node, and the conversation's `ConversationRecord.owner` (also in its view's `conversation`) links it to its parent. [`23-child-tasks.ts`](test/examples/23-child-tasks.ts) prints the checkout's tree while its payments run.
+A task appears with the commit that creates it and leaves with the commit that makes it terminal. Statuses are the committed ones: `pending`, `running`, `waiting` (with `on` and `policy`), `sleeping` (with `until` and the `signals` keys it waits for, when set), and `completing` (with the held outcome's status). After a restart, tasks that were `running` show as `pending` until they run again. Whether a pending task is blocked by a missing definition is not part of the graph; `harness.inspect()` reports that. The graph lists live tasks only: once a subagent's owner task is terminal, a later task in its conversation is a top-level node, and the conversation's `ConversationRecord.owner` (also in its view's `conversation`) links it to its parent. [`23-child-tasks.ts`](test/examples/23-child-tasks.ts) prints the checkout's tree while its payments run.
 
 ## Your Own State
 
@@ -788,7 +1024,7 @@ const usage = await harness.usage(context); // { models: { "openai/gpt-6-sol": U
 | Memory | `MemoryStorage` from the package root | Nothing is persisted. |
 | IndexedDB | `IndexedDbStorage.open(name)` from `@earendil-works/pi-durable/storage/indexeddb` | Browser-only storage in one IndexedDB database. |
 | SQLite | `openNodeSqliteStorage(file)` from `@earendil-works/pi-durable/storage/sqlite/node` | One database file. WAL mode with `synchronous = NORMAL`: commits survive process crashes; the newest may be lost on power or host failure. |
-| JSONL | `openNodeJsonlStorage(directory, context)` from `@earendil-works/pi-durable/storage/jsonl/node` | Append-only files in one directory. Pass `{ fsync: true }` to flush before each commit marker. Keeps the whole history in memory too, so memory grows with it; use SQLite for long-running agents. |
+| JSONL | `openNodeJsonlStorage(directory, context)` from `@earendil-works/pi-durable/storage/jsonl/node` | Append-only files in one directory. Pass `{ fsync: true }` to flush before each commit marker, `{ readOnly: true }` to view a directory another process writes. Keeps the whole history in memory too, so memory grows with it; use SQLite for long-running agents. |
 | Cloudflare Durable Object | `openDurableObjectSqliteStorage(ctx.storage)` from `@earendil-works/pi-durable/storage/sqlite/cloudflare` | The SQLite storage of one SQLite-backed Durable Object; commits are its storage transactions. |
 
 In a browser, open IndexedDB storage with `await IndexedDbStorage.open(name)`. One owner must hold the database at a
@@ -812,7 +1048,7 @@ await database.exec("CREATE TABLE IF NOT EXISTS host_notes (text TEXT)");
 await database.run("INSERT INTO host_notes (text) VALUES (?)", text);
 ```
 
-One process owns a storage at a time; there is no cross-process locking. The portable SQLite and JSONL cores (`/storage/sqlite`, `/storage/jsonl`) run without Node APIs, for example on Bun or in Cloudflare Durable Objects, given an asynchronous `SqliteDatabase` facade or a `FileSystem` from `@earendil-works/pi-durable/env`.
+One process writes a storage at a time; there is no cross-process locking. Opening JSONL storage writes too: it truncates torn lines and unconfirmed sidecar records, and removes sidecar records later commits made unnecessary. A viewer of a directory another process writes therefore opens it with `{ readOnly: true }`: that open writes nothing, skips the same records in memory, holds the state committed at open, and its `commit()` rejects with `JsonlStorageReadOnlyError`. A read-only open that races a commit is retried. The portable SQLite and JSONL cores (`/storage/sqlite`, `/storage/jsonl`) run without Node APIs, for example on Bun or in Cloudflare Durable Objects, given an asynchronous `SqliteDatabase` facade or a `FileSystem` from `@earendil-works/pi-durable/env`.
 
 SQLite adapters implement promise-based `exec`, `run`, `get`, `all`, `transaction`, and `close`. `run`, `get`, and `all` take SQL text plus positional bindings; adapters may cache prepared statements by SQL text. A transaction callback receives a transaction handle; all work in the transaction must use it, and the handle expires when the callback settles. Adapters must queue unrelated operations and other transactions until the transaction finishes, so calling `database` itself inside the callback never settles:
 
@@ -823,7 +1059,7 @@ await database.transaction(async (transaction) => {
 });
 ```
 
-A custom backend's `commit(writes, adopt, context)` calls `adopt(seq)` once the batch is durable, synchronously and before its next commit starts, and then resolves with `seq`; a commit that fails before the batch is durable never calls it. `adopt` is the Session's in-memory adoption and publication of the batch, so memory and every view never show a partial log: inside it the Session's own observers run (views, task graph, scheduler, waits), and `subscribeCommits()` listeners, watch listeners and the code the commit wakes follow in microtasks, so at the backend's next `await` if it still works after `adopt` (as JSONL reclaims sidecars), before its `commit` resolves. `adopt` calls no Storage method and never throws; once it ran, the commit is published even if the backend then rejects, and the Session then fails. Custom backends can run the shared conformance suite, which checks this too, with any Vitest- or Jest-compatible runner:
+A custom backend's `commit(batches, receive, context)` stores `batches` in order, each as one atomic commit with its own seq, checked against the state the earlier ones left, in as few round trips as it can. It stops at the first batch its own checks refuse (global IDs, document actions, copy resolution): the batches before it stay stored, it and the later ones are not. Once they are durable it calls `receive(index, seq)` per stored batch, in order and synchronously, then resolves with `{ stored, refused? }`; it rejects for an unknown outcome (connection lost, a failed statement or `COMMIT`). `receive` is a durability receipt: the Session publishes each batch later, one at a time, so memory and every view never show a partial log. `receive` calls no Storage method and never throws. Custom backends can run the shared conformance suite, which checks this too, with any Vitest- or Jest-compatible runner:
 
 ```typescript
 import { registerStorageConformance } from "@earendil-works/pi-durable/testing";
@@ -839,7 +1075,7 @@ registerStorageConformance({ describe, expect, it }, "My Storage", async (use) =
 });
 ```
 
-The package root loads TypeBox, because the tool task validates arguments with pi-ai's `validateToolArguments()`. That costs about 23 MB of peak RSS unbundled, about 4 MB in a tree-shaken bundle.
+The package root loads pi-schema, because the tool task validates arguments with pi-ai's `validateToolArguments()`.
 
 ## Errors
 
@@ -887,6 +1123,22 @@ node --conditions=source --experimental-strip-types test/examples/13-chat.ts
 | [29-tool-override](test/examples/29-tool-override.ts) | A same-name bash for some conversations, and a wrapper that times whichever bash won |
 | [30-reload-and-restart](test/examples/30-reload-and-restart.ts) | Reloading an extension mid-call, and stored choices surviving a restart |
 | [31-transcript](test/examples/31-transcript.ts) | A client's transcript over the windowed view: live appends, a stall with a gap, loading it and earlier pages, and resuming with `from` |
+| [32-tests-after-edits](test/examples/32-tests-after-edits.ts) | An `afterRun` hook that runs the tests after every run that edited files, a fix run when they fail, and input waiting for them |
+| [33-turn-limit-and-continue](test/examples/33-turn-limit-and-continue.ts) | A per-conversation turn limit, `runFailure`, and continuing without a user message |
+| [34-submit-in-commit](test/examples/34-submit-in-commit.ts) | Admitting a visitor's steer inside the host's own commit with `submit(tx, draft)` and `whenIdle: "reject"` |
+| [35-durable-on-the-store](test/examples/35-durable-on-the-store.ts) | A Harness on `StoreStorage` in a Chord host's store, next to a Chord object's own table: one commit queue, one id allocator, one export |
+| [36-durable-views](test/examples/36-durable-views.ts) | A Chord object following a Durable view with `self.follow`: its frames and a member reading the followed value |
+| [37-harness-registry](test/examples/37-harness-registry.ts) | A Harness in Chord objects: extensions contributed through a Chord registry, and a follower that moves to the next Harness when one closes |
+| [38-signals](test/examples/38-signals.ts) | `defineSignal()`, every `harness.signal()` result, and an early signal waking the sleep at once |
+| [39-ask-a-person](test/examples/39-ask-a-person.ts) | A task sleeping on a person's answer with a deadline: answered, then expired with a late answer refused; `wake()` while it sleeps |
+| [40-tool-waits-for-webhook](test/examples/40-tool-waits-for-webhook.ts) | A CI tool that parks on its webhook's signal: a crash before the park (idempotency memo) and Stop while parked (`cancel`) |
+| [41-tool-polls](test/examples/41-tool-polls.ts) | A tool that parks on time to poll a slow job with backoff |
+| [42-parallel-children](test/examples/42-parallel-children.ts) | `executeTool(..., { wait: false })` and a park with `policy: "any"`, collecting results by key across wakes |
+| [43-subagent-waits](test/examples/43-subagent-waits.ts) | A subagent tool parked on `SubmissionSettled` (`notify`) while its child parks on a person |
+| [44-approval-gate](test/examples/44-approval-gate.ts) | A `beforeTool` approval gate keyed by the arguments with a memoized deadline, a second gate asked on every wake, denial and expiry |
+| [45-review-on-yield](test/examples/45-review-on-yield.ts) | An `onYield` review task whose `{ continue }` sends the agent back, and a queued user message winning over it |
+| [46-after-tools-terminate](test/examples/46-after-tools-terminate.ts) | An `afterTools` task asking a person whether to go on: a steer, then `{ terminate: true }` |
+| [47-fit-images](test/examples/47-fit-images.ts) | Images fitted to the model's limits before they are stored: an attached photo with `fitImage`, a tool's screenshot with the `fit-images` extension |
 | [00](test/examples/00-conversation.ts)–[12](test/examples/12-recovery.ts) | The layers underneath: sessions, documents, forks, watches, the Harness, agent configuration, reload, extension state, tasks, recovery |
 
 Examples that call OpenAI need `OPENAI_API_KEY`; most use the faux provider otherwise.

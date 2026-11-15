@@ -1,4 +1,4 @@
-export type { NativeWatchCall, WatchCall, WatchEnd, WatchHandle } from "@earendil-works/chord";
+export type { NativeWatchCall, WatchCall, WatchEnd, WatchHandle } from "@earendil-works/chord/watch";
 export { defineDoc, defineDocFamily } from "./documents.ts";
 export {
 	AssistantEntry,
@@ -9,7 +9,14 @@ export {
 	ToolResultEntry,
 	UserEntry,
 } from "./entries.ts";
-export { ConversationBusy, ReadAfterWrite, ReadOnlySession, SessionFailed, StorageRequestError } from "./errors.ts";
+export {
+	ConversationBusy,
+	ConversationIdle,
+	ReadAfterWrite,
+	ReadOnlySession,
+	SessionFailed,
+	StorageRequestError,
+} from "./errors.ts";
 export {
 	AgentDoc,
 	configure,
@@ -24,7 +31,7 @@ export {
 	CompactionTask,
 	type SummaryRequest,
 } from "./harness/compaction.ts";
-export { defineExtension, defineTool, hook, section, wrapSection, wrapTool } from "./harness/define.ts";
+export { defineExtension, defineTool, hook, hookTask, section, wrapSection, wrapTool } from "./harness/define.ts";
 export {
 	type GenerationCheckpoint,
 	type GenerationInput,
@@ -37,6 +44,7 @@ export {
 	type CompactionFailure,
 	type CompactionStatus,
 	LiveDoc,
+	type LiveRun,
 	type LiveState,
 	type NestedToolSlot,
 	type NestedToolSummary,
@@ -46,6 +54,7 @@ export {
 } from "./harness/live.ts";
 export { ProviderDoc, type ProviderState } from "./harness/provider.ts";
 export { createRegistry } from "./harness/registry.ts";
+export { registryReader } from "./harness/registry-reader.ts";
 export type { BlockedReason } from "./harness/scheduler.ts";
 export type { TaskGraph, TaskGraphNode, TaskGraphState, TaskGraphWatch } from "./harness/task-graph.ts";
 export { DURABLE_TELEMETRY_SCHEMA } from "./harness/telemetry.ts";
@@ -66,6 +75,7 @@ export {
 } from "./harness/transcript.ts";
 export type {
 	AfterFailedRun,
+	AfterToolsDecision,
 	Agent,
 	AgentChange,
 	AgentState,
@@ -94,9 +104,11 @@ export type {
 	HookRegistration,
 	HookResult,
 	HooksOf,
+	HookTask,
 	InputEntry,
 	InputSubmissionDraft,
 	ModelRef,
+	NestedToolCall,
 	NestedToolExecutionResult,
 	ProgressPolicy,
 	PromptInput,
@@ -105,6 +117,7 @@ export type {
 	Registry,
 	RegistryReader,
 	RegistrySnapshot,
+	RunSummary,
 	Settings,
 	SettledSubmissionRecord,
 	SettledTask,
@@ -118,14 +131,26 @@ export type {
 	ToolExecutionResult,
 	ToolHookCall,
 	ToolHooks,
+	ToolNamespace,
+	ToolPark,
 	ToolRegistration,
 	UserInput,
 	Wake,
 	Wrap,
+	YieldDecision,
 } from "./harness/types.ts";
 export { UsageDoc, type UsageState } from "./harness/usage.ts";
 export type { ConversationView, ConversationWindow } from "./harness/view.ts";
 export { createSession } from "./session/session.ts";
+export {
+	defineSignal,
+	type SignalDefinition,
+	type SignalKey,
+	type SignalResult,
+	type SignalState,
+	type SignalToken,
+	SubmissionSettled,
+} from "./signals.ts";
 export { MemoryStorage } from "./storage/memory.ts";
 export { defineTask } from "./tasks.ts";
 export type {
@@ -136,6 +161,7 @@ export type {
 	CommitOptions,
 	CommitPersistence,
 	CommitPublication,
+	CommitResult,
 	CommonDocDefinition,
 	ContextEdit,
 	ConversationDocFamilyToken,
@@ -198,6 +224,7 @@ export type {
 	StoredDocument,
 	SubmissionCreate,
 	SubmissionId,
+	SubmissionNotify,
 	SubmissionQuery,
 	SubmissionRecord,
 	SubmissionSettlement,
@@ -218,5 +245,6 @@ export type {
 	Tx,
 	TypedEntry,
 	TypedEntryDraft,
+	WakeReason,
 } from "./types.ts";
 export { ROOT_CONVERSATION_ID } from "./types.ts";

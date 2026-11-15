@@ -1,6 +1,6 @@
-import type { Context } from "@earendil-works/chord";
+import type { Context } from "@earendil-works/chord/context";
 import { SessionFailed } from "../errors.ts";
-import type { Cursor, Page } from "../types.ts";
+import type { ConversationId, Cursor, EntryQuery, Page } from "../types.ts";
 
 /** Pending waits by key. Each settles once: through `resolve`, `rejectAll`, or cancellation of its context. */
 export class Waiters<K, T> {
@@ -8,8 +8,14 @@ export class Waiters<K, T> {
 
 	add(key: K, context: Context): Promise<T> {
 		const signal = context.abortSignal;
-		if (signal?.aborted) return Promise.reject(signal.reason);
 		const waiter = Promise.withResolvers<T>();
+		// Callers may hand the promise out only after later awaits (a job's result on the line): handled now, so a
+		// rejection before then is not reported unhandled. The caller still gets it.
+		waiter.promise.catch(() => {});
+		if (signal?.aborted) {
+			waiter.reject(signal.reason);
+			return waiter.promise;
+		}
 		const set = this.#sets.get(key) ?? new Set();
 		this.#sets.set(key, set.add(waiter));
 		if (signal !== undefined) {
@@ -63,4 +69,17 @@ export function closedError(session: { readonly failure: { readonly error: unkno
 /** `{ extension }` when the extension is known. */
 export function optionalExtension(extension: string | undefined): { readonly extension?: string } {
 	return extension === undefined ? {} : { extension };
+}
+
+/** The scan of conversation `conversationId`'s history that `query` asks for, without fields an untyped caller added. */
+export function conversationEntries(
+	conversationId: ConversationId,
+	query: Omit<EntryQuery, "conversationId">,
+): EntryQuery {
+	return {
+		conversationId,
+		...(query.minEntryId === undefined ? {} : { minEntryId: query.minEntryId }),
+		...(query.maxEntryId === undefined ? {} : { maxEntryId: query.maxEntryId }),
+		...(query.order === undefined ? {} : { order: query.order }),
+	};
 }

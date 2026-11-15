@@ -9,12 +9,13 @@ import {
 	type Message,
 	type SimpleStreamOptions,
 	type TranscriptContext,
-	Type,
 	type UserMessage,
 } from "@earendil-works/pi-ai";
 import {
+	AgentDoc,
 	type CompactionPolicy,
 	type CompactionResult,
+	type CompactionSettings,
 	CompactionTask,
 	type ContextView,
 	type Conversation,
@@ -29,9 +30,11 @@ import {
 	type LiveState,
 	MemoryStorage,
 	ProviderDoc,
+	type SubmissionId,
 	type TaskId,
 	UsageDoc,
 } from "@earendil-works/pi-durable";
+import { obj } from "@earendil-works/pi-schema";
 import { afterEach, describe, expect, it } from "vitest";
 import { selectCut, serializeConversation } from "../src/harness/compaction.ts";
 import { orderToolResults } from "../src/harness/context.ts";
@@ -470,7 +473,7 @@ describe("manual compaction", () => {
 			defineTool({
 				name: "wait",
 				description: "wait",
-				parameters: Type.Object({}),
+				parameters: obj({}),
 				execute: async () => ({ output: [{ type: "text", text: "waited" }] }),
 			}),
 		);
@@ -885,7 +888,7 @@ describe("compaction outcomes", () => {
 			defineTool({
 				name: "read",
 				description: "read",
-				parameters: Type.Object({}),
+				parameters: obj({}),
 				execute: async () => ({ output: [] }),
 			}),
 		);
@@ -1342,7 +1345,7 @@ describe("compaction estimates and interactions", () => {
 				defineTool({
 					name: "slow",
 					description: "slow",
-					parameters: Type.Object({}),
+					parameters: obj({}),
 					execute: async () => {
 						toolReached.resolve();
 						await toolGate.promise;
@@ -2453,7 +2456,102 @@ describe("per-model compaction overrides", () => {
 	});
 });
 
-describe("pi.live version 2", () => {
+// #11771: per-conversation compaction settings.
+describe("per-conversation compaction settings", () => {
+	it("resolves model-specific over general, and the conversation over the harness at the same level", async () => {
+		// The summary's maxTokens is 0.8 * the resolved reserveTokens, below the model's 900.
+		const cases: {
+			readonly harness: CompactionSettings;
+			readonly conversation: CompactionSettings;
+			readonly maxTokens: number;
+		}[] = [
+			{ harness: {}, conversation: { reserveTokens: 500 }, maxTokens: 400 },
+			{
+				harness: { modelOverrides: { "faux/faux-1": { reserveTokens: 250 } } },
+				conversation: { reserveTokens: 500 },
+				maxTokens: 200,
+			},
+			{
+				harness: { modelOverrides: { "faux/faux-1": { reserveTokens: 250 } } },
+				conversation: { reserveTokens: 500, modelOverrides: { "faux/faux-1": { reserveTokens: 125 } } },
+				maxTokens: 100,
+			},
+			{
+				harness: {},
+				conversation: { reserveTokens: 500, modelOverrides: { "faux/other": { reserveTokens: 125 } } },
+				maxTokens: 400,
+			},
+		];
+		for (const { harness, conversation, maxTokens } of cases) {
+			const chat = await open();
+			await history(chat);
+			chat.setup.settings.compaction = { ...MANUAL, ...harness };
+			await chat.root.configure({ compaction: conversation }, context);
+			chat.faux.summaries.push(summary());
+			expect((await result(chat, await chat.root.compact(undefined, context))).status).toBe("completed");
+			expect(chat.faux.summaryRequests[0]!.options?.maxTokens).toBe(maxTokens);
+			await chat.harness.close(context);
+		}
+	});
+
+	it("lets the conversation's enabled: false beat the harness's model override, and its own model override beat that", async () => {
+		const harness: CompactionSettings = {
+			...BLOCKING,
+			reserveTokens: 0,
+			modelOverrides: { "faux/faux-1": { enabled: true, reserveTokens: 300 } },
+		};
+		const cases: { readonly conversation: CompactionSettings | null; readonly summaries: number }[] = [
+			{ conversation: null, summaries: 1 },
+			{ conversation: { enabled: false }, summaries: 0 },
+			{ conversation: { enabled: false, modelOverrides: { "faux/faux-1": { enabled: true } } }, summaries: 1 },
+		];
+		for (const { conversation, summaries } of cases) {
+			const chat = await open({ contextWindow: 1000 });
+			await history(chat);
+			chat.setup.settings.compaction = harness;
+			await chat.root.configure({ compaction: conversation }, context);
+			chat.faux.summaries.push(summary());
+			await turn(chat, text("u4", 200), "a4");
+			expect(chat.faux.summaryRequests).toHaveLength(summaries);
+			await chat.harness.close(context);
+		}
+	});
+
+	it("skips overflow compaction when the conversation turns compaction off", async () => {
+		const chat = await open();
+		await history(chat);
+		chat.setup.settings.compaction = { ...MANUAL, enabled: true };
+		await chat.root.configure({ compaction: { enabled: false } }, context);
+		chat.faux.agent.push(failure(OVERFLOW));
+		const input = await chat.root.submit({ type: "input", content: text("u4", 100) }, context);
+		expect((await input.wait(context)).status).toBe("unanswered");
+		expect(chat.faux.summaryRequests).toHaveLength(0);
+		await chat.harness.close(context);
+	});
+
+	it("drops undefined fields, rejects token counts that are not integers 0 or more, and clears on null", async () => {
+		const chat = await open();
+		const settings: CompactionSettings = {
+			keepRecentTokens: 0,
+			enabled: undefined,
+			modelOverrides: { "faux/faux-1": { reserveTokens: 10 } },
+		};
+		await chat.root.configure({ compaction: settings }, context);
+		const stored = async () => (await chat.harness.snapshot(AgentDoc, chat.root.id, context))?.compaction;
+		const expected = { keepRecentTokens: 0, modelOverrides: { "faux/faux-1": { reserveTokens: 10 } } };
+		expect(await stored()).toStrictEqual(expected);
+		for (const bad of [{ reserveTokens: -1 }, { modelOverrides: { "faux/faux-1": { backgroundTokens: 1.5 } } }]) {
+			await expect(chat.root.configure({ compaction: bad }, context)).rejects.toThrow(RangeError);
+		}
+		// A rejected change leaves the stored settings as they were.
+		expect(await stored()).toEqual(expected);
+		await chat.root.configure({ compaction: null }, context);
+		expect(await stored()).toBeUndefined();
+		await chat.harness.close(context);
+	});
+});
+
+describe("pi.live migrations", () => {
 	it("reads a version 1 value with each compaction's `reason` as `trigger`, and stores it migrated on its next write", async () => {
 		const storage = new MemoryStorage();
 		const session = createSession(storage);
@@ -2473,6 +2571,7 @@ describe("pi.live version 2", () => {
 		);
 		await session.commit(async (tx) => {
 			const live = await tx.doc(LiveV1, conversationId);
+			live.run = { taskId: 9, inputs: [4] };
 			live.compactions = [{ taskId: 7, reason: "threshold", blocking: true, attempt: 2 }];
 			live.compactionFailure = { taskId: 5, reason: "manual", error: "no model" };
 		}, context);
@@ -2486,6 +2585,8 @@ describe("pi.live version 2", () => {
 			return (await storage.document(record!.id, "current", context))!;
 		};
 		const migrated: LiveState = {
+			// A run in flight across the upgrade counts its turns from 0 (#11043).
+			run: { taskId: 9 as TaskId, inputs: [4 as SubmissionId], turns: 0 },
 			compactions: [{ taskId: 7 as TaskId<CompactionResult>, trigger: "threshold", blocking: true, attempt: 2 }],
 			compactionFailure: { taskId: 5 as TaskId<CompactionResult>, trigger: "manual", error: "no model" },
 		};
@@ -2501,9 +2602,43 @@ describe("pi.live version 2", () => {
 			(await tx.doc(LiveDoc, conversationId)).compactions![0]!.attempt = 3;
 		}, context);
 		expect(await stored()).toMatchObject({
-			version: 2,
+			version: 3,
 			value: { compactions: [{ trigger: "threshold", attempt: 3 }], compactionFailure: { trigger: "manual" } },
 		});
+		await session.close(context);
+	});
+
+	// #11043: an unreleased build stored version 2 without `run.turns`; a run in flight then counted NaN turns.
+	it("gives a version 2 run without turns a count of 0", async () => {
+		const storage = new MemoryStorage();
+		const session = createSession(storage);
+		const LiveV2 = defineDoc<JsonObject>({
+			kind: "pi.live",
+			version: 2,
+			scope: "conversation",
+			history: "latest",
+			fork: "initial",
+			initial: () => ({}),
+			checkpointWhen: () => false,
+		});
+		const conversationId = await session.commit(
+			async (tx) => (await tx.createConversation({ ownership: { kind: "ownerless" } })).id,
+			context,
+		);
+		await session.commit(async (tx) => {
+			const live = await tx.doc(LiveV2, conversationId);
+			live.run = { taskId: 9, inputs: [4] };
+			live.compactions = [{ taskId: 7, trigger: "threshold", blocking: true, attempt: 2 }];
+		}, context);
+		expect(await session.snapshot(LiveDoc, conversationId, context)).toEqual({
+			run: { taskId: 9, inputs: [4], turns: 0 },
+			compactions: [{ taskId: 7, trigger: "threshold", blocking: true, attempt: 2 }],
+		});
+		// A version 2 run that has a count keeps it.
+		await session.commit(async (tx) => {
+			(await tx.doc(LiveV2, conversationId)).run = { taskId: 9, inputs: [4], turns: 3 };
+		}, context);
+		expect((await session.snapshot(LiveDoc, conversationId, context))?.run?.turns).toBe(3);
 		await session.close(context);
 	});
 });

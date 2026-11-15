@@ -127,6 +127,7 @@ export type KnownProvider =
 	| "qwen-token-plan"
 	| "qwen-token-plan-cn"
 	| "qwen-token-plan-individual"
+	| "qwen-token-plan-individual-cn"
 	| "xiaomi"
 	| "xiaomi-token-plan-cn"
 	| "xiaomi-token-plan-ams"
@@ -256,6 +257,13 @@ export interface StreamOptions extends ProviderRequestOptions<Model<Api>> {
 	 * session-aware features. Ignored by providers that don't support it.
 	 */
 	sessionId?: string;
+	/**
+	 * Do not use or record server-side continuation state for this request (for example
+	 * Anthropic message threads). Set this for replays such as cache warming, which must not
+	 * replace the state of the real conversation. Providers that do not keep continuation
+	 * state ignore it.
+	 */
+	disableContinuation?: boolean;
 	/**
 	 * WebSocket connect timeout in milliseconds for providers that support
 	 * WebSocket transports. This covers the connection/open handshake only;
@@ -743,8 +751,6 @@ export interface ClassifierResult {
 	timestamp: number; // Unix timestamp in milliseconds
 }
 
-import type { TSchema } from "typebox";
-
 /** OpenAI grammar variants for constrained sampling. */
 export type GrammarFormat = "openai_lark" | "openai_regex";
 
@@ -767,7 +773,11 @@ export type ConstrainedSamplingConfig =
 			variants: GrammarVariants;
 	  };
 
-export interface Tool<TParameters extends TSchema = TSchema> {
+/**
+ * A tool the model may call. `parameters` is the JSON Schema of its arguments: pi-schema's builders (which also type
+ * the arguments, see `Static` in `@earendil-works/pi-schema`), TypeBox schemas, or any JSON Schema object.
+ */
+export interface Tool<TParameters extends object = object> {
 	name: string;
 	description: string;
 	parameters: TParameters;

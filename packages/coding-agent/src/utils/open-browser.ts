@@ -24,8 +24,11 @@ export function openBrowser(target: string): Promise<boolean> {
 					? ["rundll32.exe", ["url.dll,FileProtocolHandler", target]]
 					: ["xdg-open", [target]];
 
+	// On WSL, xdg-open launches explorer.exe, which fails when the cwd's
+	// \\wsl.localhost\... path exceeds MAX_PATH (#11592). The target is a URL,
+	// so no launcher needs pi's cwd.
 	return new Promise((resolve) => {
-		const child = spawn(cmd, args, { stdio: "ignore", detached: true });
+		const child = spawn(cmd, args, { stdio: "ignore", detached: true, cwd: "/" });
 		child.on("error", () => resolve(false));
 		child.on("exit", (code) => resolve(code === 0));
 		child.unref();

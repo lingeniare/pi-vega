@@ -1,5 +1,6 @@
 // `pi.live.runFailure`: why the newest run ended without an answer, as state a renderer shows (#11327).
-import { type FauxResponseStep, fauxAssistantMessage, fauxText, fauxToolCall, Type } from "@earendil-works/pi-ai";
+
+import { type FauxResponseStep, fauxAssistantMessage, fauxText, fauxToolCall } from "@earendil-works/pi-ai";
 import {
 	type AfterFailedRun,
 	type Conversation,
@@ -10,6 +11,7 @@ import {
 	MemoryStorage,
 	type RunFailure,
 } from "@earendil-works/pi-durable";
+import { obj } from "@earendil-works/pi-schema";
 import { describe, expect, it } from "vitest";
 import { chatSetup, openChat, unanswered } from "./chat-support.ts";
 import { addTool } from "./harness-support.ts";
@@ -49,6 +51,7 @@ describe("pi.live.runFailure", () => {
 			inputs: [submission.id],
 			reason: "model_error",
 			detail: "Invalid request",
+			first: expect.any(Number),
 		} satisfies RunFailure);
 		const next = await root.submit({ type: "input", content: "again" }, context);
 		// The commit that starts the next run removes it.
@@ -85,7 +88,12 @@ describe("pi.live.runFailure", () => {
 		const taskId = (await live(harness, root)).run!.taskId;
 		await root.abort(context);
 		expect(await submission.wait(context)).toMatchObject({ status: "unanswered", reason: "aborted" });
-		expect((await live(harness, root)).runFailure).toEqual({ taskId, inputs: [submission.id], reason: "aborted" });
+		expect((await live(harness, root)).runFailure).toEqual({
+			taskId,
+			inputs: [submission.id],
+			reason: "aborted",
+			first: expect.any(Number),
+		});
 		await harness.close(context);
 	});
 
@@ -98,7 +106,7 @@ describe("pi.live.runFailure", () => {
 			defineTool({
 				name: "hold",
 				description: "Waits",
-				parameters: Type.Object({}),
+				parameters: obj({}),
 				execute: async () => {
 					started.resolve();
 					await gate.promise;

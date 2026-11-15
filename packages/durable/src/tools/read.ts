@@ -1,6 +1,6 @@
-import type { Context } from "@earendil-works/chord";
+import type { Context } from "@earendil-works/chord/context";
 import { characterEnd } from "@earendil-works/chord/output";
-import { type Static, Type } from "typebox";
+import { lit, num, obj, opt, type Static, str, union } from "@earendil-works/pi-schema";
 import {
 	type BinaryReader,
 	type FileInfo,
@@ -23,25 +23,43 @@ import { requireEnv } from "./env.ts";
 import { detectSupportedImageMimeTypeOf, imageDimensions } from "./image.ts";
 import {
 	base64Length,
-	DEFAULT_IMAGE_LIMITS,
 	type ImageLimits,
 	type ImageProcessor,
 	INLINE_IMAGE_TYPES,
+	imageLimits,
+	preparedNotes,
 	toBase64,
 } from "./image-processor.ts";
 import { resolveReadToolPath } from "./path-utils.ts";
 
-const readSchema = Type.Object({
-	path: Type.String({ description: "Path to the file to read (relative or absolute)" }),
-	offset: Type.Optional(Type.Number({ description: "Line number to start reading from (1-indexed)" })),
-	limit: Type.Optional(Type.Number({ description: "Maximum number of lines to read" })),
-});
+const readSchema = obj(
+	{
+		path: str({ description: "Path to the file to read (relative or absolute)" }),
+		offset: opt(num({ description: "Line number to start reading from (1-indexed)" })),
+		limit: opt(num({ description: "Maximum number of lines to read" })),
+	},
+	{ open: true },
+);
 
 export type ReadToolInput = Static<typeof readSchema>;
+
+/**
+ * What programs such as code mode scripts get: the text of a text file, or the image block of an image, which code
+ * mode's `image()` shows.
+ */
+const readStructuredOutputSchema = union([
+	str(),
+	obj({ type: lit("image"), data: str(), mimeType: str() }, { open: true }),
+]);
 
 export type ReadToolDetails = {
 	/** How the shown text was cut; the text itself is the result content. */
 	truncation?: Omit<TruncationResult, "content">;
+	/**
+	 * Id of the conversation's model when the image was read, if it has no image input. For UIs only: the model gets
+	 * pi-ai's placeholder per request, so the stored result stays right after a switch to a vision model.
+	 */
+	imageUnsupportedByModel?: string;
 };
 
 const READ_CHUNK = 64 * 1024;
@@ -84,7 +102,7 @@ export type ReadToolOptions = {
 
 /**
  * Reads text files and images. Remarks about truncation, continuation, and image processing are diagnostics; the content
- * is only file text, or one image, which programs get as its `ImageContent`.
+ * is only file text, or one image. Programs get the text, or the image's `ImageContent`.
  */
 export function createReadTool(options: ReadToolOptions = {}): ToolRegistration<typeof readSchema, ReadToolDetails> {
 	const formats = options.images === undefined ? "jpg, png, gif, webp" : "jpg, png, gif, webp, bmp";
@@ -92,6 +110,7 @@ export function createReadTool(options: ReadToolOptions = {}): ToolRegistration<
 		name: "read",
 		description: `Read the contents of a file. Supports text files and images (${formats}). Images are sent as attachments. For text files, output is truncated to ${DEFAULT_MAX_LINES} lines or ${DEFAULT_MAX_BYTES / 1024}KB (whichever is hit first). Use offset/limit for large files. When you need the full file, continue with offset until complete.`,
 		parameters: readSchema,
+		structuredOutputSchema: readStructuredOutputSchema,
 		async execute(args, api, context) {
 			const { path, offset, limit } = args;
 			const env = requireEnv(api);
@@ -133,7 +152,8 @@ export function createReadTool(options: ReadToolOptions = {}): ToolRegistration<
 /**
  * One image block, prepared by `processor` or, without one, as it is when its format is inline and it fits the limits
  * (its size is checked before reading it, its dimensions from its header); otherwise an error result saying why. What happened to the image is an `info` diagnostic, so programs get the
- * bare `ImageContent`. A model without image input sees pi-ai's placeholder instead; a diagnostic says so.
+ * bare `ImageContent`. A model without image input sees pi-ai's placeholder instead, decided per request; `details`
+ * names it for UIs.
  */
 async function readImage(
 	reader: BinaryReader,
@@ -141,7 +161,7 @@ async function readImage(
 	path: string,
 	mimeType: string,
 	processor: ImageProcessor | undefined,
-	{ vision, limits }: ImageModel,
+	{ limits, imageUnsupportedByModel }: ImageModel,
 	context: Context,
 ): Promise<ToolExecutionResult<ReadToolDetails>> {
 	let image: { readonly data: string; readonly mimeType: string };
@@ -152,15 +172,7 @@ async function readImage(
 		if (prepared === undefined)
 			return imageError(`${path} is an image (${mimeType}) that cannot be prepared for the model`);
 		image = prepared;
-		if (prepared.convertedFrom !== undefined)
-			notes.push(`Converted from ${prepared.convertedFrom} to ${prepared.mimeType}.`);
-		if (prepared.resized !== undefined) {
-			const { from, to } = prepared.resized;
-			const scale = (from.width / to.width).toFixed(2);
-			notes.push(
-				`Resized from ${from.width}x${from.height} to ${to.width}x${to.height}. Multiply coordinates by ${scale} to map them to the original.`,
-			);
-		}
+		notes.push(...preparedNotes(prepared));
 	} else {
 		if (!INLINE_IMAGE_TYPES.has(mimeType)) {
 			return imageError(
@@ -183,31 +195,31 @@ async function readImage(
 		}
 		image = { data: toBase64(bytes), mimeType };
 	}
-	if (!vision) notes.push("The current model does not support images; it sees a placeholder instead.");
 	const diagnostics: ToolDiagnostic[] = [
 		{ severity: "info", code: "image", message: [`Read image file [${image.mimeType}].`, ...notes].join(" ") },
 	];
-	return { output: [{ type: "image", data: image.data, mimeType: image.mimeType }], diagnostics };
+	const block = { type: "image" as const, data: image.data, mimeType: image.mimeType };
+	return {
+		output: [block],
+		structuredOutput: block,
+		...(imageUnsupportedByModel === undefined ? {} : { details: { imageUnsupportedByModel } }),
+		diagnostics,
+	};
 }
 
-/** What the conversation's model takes: whether images, and within which limits. */
-type ImageModel = { readonly vision: boolean; readonly limits: ImageLimits };
+/** The conversation's model as images see it: its limits, and its id if it has no image input. */
+type ImageModel = { readonly limits: ImageLimits; readonly imageUnsupportedByModel?: string };
 
 /**
- * The conversation model's image input: `DEFAULT_IMAGE_LIMITS` overridden by its `inputLimits.images.resize`. Without
- * a resolvable model, it counts as one that takes images within the defaults.
+ * The conversation model's image limits (`imageLimits`), and its id if it has no image input. Without a resolvable
+ * model, the defaults and no id.
  */
 async function imageModel(api: ToolExecutionApi, context: Context): Promise<ImageModel> {
 	const ref = (await api.agent(context)).model;
 	const model = ref === undefined ? undefined : api.models.getModel(ref.provider, ref.modelId);
-	const resize = model?.inputLimits?.images?.resize;
 	return {
-		vision: model?.input.includes("image") ?? true,
-		limits: {
-			maxWidth: resize?.maxWidth ?? DEFAULT_IMAGE_LIMITS.maxWidth,
-			maxHeight: resize?.maxHeight ?? DEFAULT_IMAGE_LIMITS.maxHeight,
-			maxBytes: resize?.maxBytes ?? DEFAULT_IMAGE_LIMITS.maxBytes,
-		},
+		...(model === undefined || model.input.includes("image") ? {} : { imageUnsupportedByModel: model.id }),
+		limits: imageLimits(model),
 	};
 }
 
@@ -306,6 +318,7 @@ async function readText(
 
 	return {
 		output: outputText === "" ? [] : [{ type: "text" as const, text: outputText }],
+		structuredOutput: outputText,
 		...(details === undefined ? {} : { details }),
 		diagnostics,
 	};
