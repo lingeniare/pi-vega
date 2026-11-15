@@ -18,8 +18,8 @@
 		"node": ">=24.4.0"
 	},
 	"dependencies": {
-		"@earendil-works/chord": "1.5.2",
-		"@earendil-works/pi-schema": "1.5.2",
-		"@earendil-works/pi-telemetry": "1.5.2"
+		"@earendil-works/chord": "1.5.3",
+		"@earendil-works/pi-schema": "1.5.3",
+		"@earendil-works/pi-telemetry": "1.5.3"
 	}
 }

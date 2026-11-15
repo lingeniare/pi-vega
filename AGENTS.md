@@ -148,3 +148,10 @@ For release preparation, publishing, verification, or recovery, load and follow 
 ## User Override
 
 If the user's instructions conflict with any rule in this document, ask for explicit confirmation before overriding. Only then execute their instructions.
+
+## Fork notes (pi-vega)
+
+- Upstream remote: `upstream` = https://github.com/earendil-works/pi.git. Sync with `git fetch upstream --tags && git merge upstream/main` (our `v1.4.0` tag differs from upstream's; the tag fetch rejection is expected).
+- After merging upstream, hydrate the gitignored model data before typecheck/tests: `npm run hydrate-model-data` in `packages/ai` (needs network).
+- VEGA extension points, keep on merge: `packages/ai/src/providers/vega.ts`, `packages/ai/src/auth/oauth/vega.ts`, registrations in `providers/all.ts`, `types.ts` (`KnownProvider`), `env-api-keys.ts`, `bun-oauth.ts`, `auth/oauth/load.ts`, `lazy-oauth.ts`; `settings-manager.ts` `defaultTools` (`vega: [codemode, web_fetch, web_search]`); `preferred-providers.ts` lists `vega` first; `extensions/web/` built-ins; release plumbing in `scripts/build-vega-release.mjs`, `install/`, `version-check.ts`, `package-manager-cli.ts` (GitHub Releases defaults).
+- Known upstream Windows-only test failures in `packages/coding-agent/test/package-command-paths.test.ts` (4 tests: backslash in stored extension paths, "Built-in" list, pnpm self-update hint). Reproduced on pristine `upstream/main`; upstream CI runs tests on ubuntu only. Do not "fix" by diverging; report upstream if needed.
