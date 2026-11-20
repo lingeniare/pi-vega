@@ -132,7 +132,7 @@ function createModel(
 const CORAL: Rgb = [228, 138, 122];
 const BLUE: Rgb = [79, 142, 179];
 const YELLOW: Rgb = [234, 182, 93];
-const PI_LOGO_PIXELS = ["ccc.", "b.c.", "bb.y", "b..y"];
+const PI_LOGO_PIXELS = ["bcc.", "b..c", "bcc.", "b..y"];
 const PI_LOGO_COLORS: Record<string, Rgb> = { c: CORAL, b: BLUE, y: YELLOW };
 
 function piLogoModel(origin: { column: number; row: number }): Model {

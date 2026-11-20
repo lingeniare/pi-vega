@@ -66,7 +66,7 @@ describe("InteractiveMode extension changelog", () => {
 	let messages: unknown[];
 
 	function writePackage(version: string): void {
-		writeFileSync(join(packageRoot, "package.json"), JSON.stringify({ name: "pi-demo-extension", version }));
+		writeFileSync(join(packageRoot, "package.json"), JSON.stringify({ name: "pion-demo-extension", version }));
 	}
 
 	function createContext(): ExtensionChangelogContext {
@@ -90,13 +90,13 @@ describe("InteractiveMode extension changelog", () => {
 	}
 
 	beforeEach(() => {
-		tempDir = mkdtempSync(join(tmpdir(), "pi-extension-changelog-"));
+		tempDir = mkdtempSync(join(tmpdir(), "pion-extension-changelog-"));
 		packageRoot = join(tempDir, "pkg");
 		mkdirSync(packageRoot);
 		writeFileSync(join(packageRoot, "CHANGELOG.md"), CHANGELOG);
 		sourceInfo = {
 			path: join(packageRoot, "a.ts"),
-			source: "npm:pi-demo-extension",
+			source: "npm:pion-demo-extension",
 			scope: "user",
 			origin: "package",
 			baseDir: packageRoot,
@@ -124,10 +124,10 @@ describe("InteractiveMode extension changelog", () => {
 
 		expect(display()).toEqual([
 			{
-				name: "pi-demo-extension",
+				name: "pion-demo-extension",
 				version: "1.2.0",
 				markdown:
-					"## pi-demo-extension [1.2.0]\n\n- Added feature B\n\n## pi-demo-extension [1.1.0]\n\n- Added feature A",
+					"## pion-demo-extension [1.2.0]\n\n- Added feature B\n\n## pion-demo-extension [1.1.0]\n\n- Added feature A",
 			},
 		]);
 		expect(settingsManager.getExtensionChangelogVersion(getSourcePackageKey(sourceInfo))).toBe("1.2.0");
@@ -192,12 +192,12 @@ describe("InteractiveMode startup notices", () => {
 		const runner = { extensions } as unknown as ExtensionRunner;
 		const context: StartupNoticesContext = {
 			startupNoticesShown: false,
-			changelogMarkdown: "## [2.0.0]\n\n- :warning: Pi change",
+			changelogMarkdown: "## [2.0.0]\n\n- :warning: Pion change",
 			extensionChangelogUpdates: [
 				{
-					name: "pi-demo",
+					name: "pion-demo",
 					version: "1.2.0",
-					markdown: "## pi-demo [1.2.0]\n\n- :warning: Demo change",
+					markdown: "## pion-demo [1.2.0]\n\n- :warning: Demo change",
 				},
 			],
 			version: "2.0.0",
@@ -220,7 +220,7 @@ describe("InteractiveMode startup notices", () => {
 	test("runs changelog transformers on What's New and Extension Updates", () => {
 		const rendered = renderNotices([extensionWithTransformer(replaceShortcodes, ["changelog"])]);
 
-		expect(rendered).toContain("⚠ Pi change");
+		expect(rendered).toContain("⚠ Pion change");
 		expect(rendered).toContain("⚠ Demo change");
 		expect(rendered).not.toContain(":warning:");
 	});
@@ -230,7 +230,7 @@ describe("InteractiveMode startup notices", () => {
 			extensionWithTransformer(replaceShortcodes, ["user", "assistant", "assistant-thinking"]),
 		]);
 
-		expect(rendered).toContain(":warning: Pi change");
+		expect(rendered).toContain(":warning: Pion change");
 		expect(rendered).toContain(":warning: Demo change");
 	});
 });

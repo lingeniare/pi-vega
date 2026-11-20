@@ -136,7 +136,7 @@ describe("extension provider model lifecycle", () => {
 	});
 
 	it("preserves native deferred methods through provider overlays", async () => {
-		const tempDir = mkdtempSync(join(tmpdir(), "pi-native-provider-deferred-"));
+		const tempDir = mkdtempSync(join(tmpdir(), "pion-native-provider-deferred-"));
 		const modelsPath = join(tempDir, "models.json");
 		writeFileSync(
 			modelsPath,
@@ -260,7 +260,7 @@ describe("extension provider model lifecycle", () => {
 	});
 
 	it("applies models.json overrides above native providers", async () => {
-		const tempDir = mkdtempSync(join(tmpdir(), "pi-native-provider-"));
+		const tempDir = mkdtempSync(join(tmpdir(), "pion-native-provider-"));
 		const modelsPath = join(tempDir, "models.json");
 		writeFileSync(
 			modelsPath,

@@ -1,18 +1,18 @@
 #!/bin/sh
 
 PI_PACKAGE="@earendil-works/pi-coding-agent"
-PI_CMD="pi"
+PI_CMD="pion"
 # Releases are published as GitHub Release assets on the fork: metadata and the
 # latest tarball under releases/latest/download, versioned manifests and
 # tarballs under releases/download/<tag>.
-PI_RELEASES_URL="${PI_RELEASES_URL:-https://github.com/lingeniare/pi-vega/releases}"
-PI_INSTALLER_METADATA_URL="${PI_INSTALLER_METADATA_URL:-$PI_RELEASES_URL/latest/download/installer-release.json}"
-PI_INSTALLER_DOWNLOAD_BASE="${PI_INSTALLER_DOWNLOAD_BASE:-$PI_RELEASES_URL/download}"
+PI_RELEASES_URL="${PION_RELEASES_URL:-https://github.com/lingeniare/pi-vega/releases}"
+PI_INSTALLER_METADATA_URL="${PION_INSTALLER_METADATA_URL:-$PI_RELEASES_URL/latest/download/installer-release.json}"
+PI_INSTALLER_DOWNLOAD_BASE="${PION_INSTALLER_DOWNLOAD_BASE:-$PI_RELEASES_URL/download}"
 # Package spec used for the legacy npm install path: a tarball URL on GitHub
 # Releases because this fork is not published to an npm registry.
-PI_PACKAGE_SPEC="${PI_PACKAGE_SPEC:-$PI_RELEASES_URL/latest/download/pi-coding-agent-latest.tgz}"
+PI_PACKAGE_SPEC="${PION_PACKAGE_SPEC:-$PI_RELEASES_URL/latest/download/pi-coding-agent-latest.tgz}"
 PI_MANAGED_INSTALL_MARKER="managed-install.json"
-# Pi publishes npm-shrinkwrap.json, so the explicit installer/reinstaller can
+# Pion publishes npm-shrinkwrap.json, so the explicit installer/reinstaller can
 # bypass npm's release-age gate without reopening transitive dependency ranges.
 PI_NPM_INSTALL_MIN_AGE_ARG="--min-release-age=0"
 PI_ESC=$(printf '\033')
@@ -23,7 +23,7 @@ readonly PI_PACKAGE PI_CMD PI_RELEASES_URL PI_INSTALLER_METADATA_URL PI_INSTALLE
 pi_installer_main() {
   set -eu
 
-  check_file="${TMPDIR:-/tmp}/pi-installer-checks.$$"
+  check_file="${TMPDIR:-/tmp}/pion-installer-checks.$$"
   run_preflight_checks >"$check_file" &
   check_pid=$!
 
@@ -35,7 +35,7 @@ pi_installer_main() {
     check_status=$?
   fi
 
-  printf '\033[1m  Pi Installer\033[0m\n\033[2m  There are many agent harnesses but this one is yours\033[0m\n\n'
+  printf '\033[1m  Pion Installer\033[0m\n\033[2m  There are many agent harnesses but this one is yours\033[0m\n\n'
   if [ "$check_status" -eq 0 ]; then
     cat "$check_file"
   fi
@@ -46,7 +46,7 @@ pi_installer_main() {
       exit "$check_status"
     fi
 
-    check_file="${TMPDIR:-/tmp}/pi-installer-checks.$$"
+    check_file="${TMPDIR:-/tmp}/pion-installer-checks.$$"
     if run_preflight_checks >"$check_file"; then
       check_status=0
     else
@@ -116,10 +116,10 @@ pi_installer_main() {
     printf '\nPi was installed successfully.\n'
   fi
   if pi_managed_install_enabled; then
-    printf '\nUpdate Pi later with: pi update\n'
+    printf '\nUpdate Pion later with: pion update\n'
   fi
   if installed_pi_is_first_on_path; then
-    printf '\nRun it with: pi\n'
+    printf '\nRun it with: pion\n'
     if ! pi_managed_install_enabled && [ "${PI_NODE_INSTALLED_STANDALONE:-0}" = 1 ]; then
       printf 'If node is not found in your shell yet, add this to your shell profile:\n\n'
       printf '  export PATH="%s:$PATH"\n' "$PI_STANDALONE_NODE_BIN"
@@ -132,8 +132,8 @@ pi_installer_main() {
 }
 
 # The installer runs as a child process and cannot change the calling shell's
-# PATH, so offer to start the installed pi by its full path. This makes the
-# first run work even when the shell still needs a restart to find pi.
+# PATH, so offer to start the installed pion by its full path. This makes the
+# first run work even when the shell still needs a restart to find pion.
 prompt_start_pi() {
   start_pi_path=$(pi_installed_path)
   [ -n "$start_pi_path" ] && [ -x "$start_pi_path" ] || return 0
@@ -143,7 +143,7 @@ prompt_start_pi() {
   fi
 
   exec 3<>/dev/tty
-  printf '\nStart pi now? [Y/n] ' >&3
+  printf '\nStart pion now? [Y/n] ' >&3
   if ! IFS= read -r answer <&3; then
     answer=n
   fi
@@ -163,16 +163,16 @@ run_preflight_checks() {
   if command -v node >/dev/null 2>&1; then
     node_version=$(node --version)
     if ! node -e 'const [maj,min,patch] = process.versions.node.split(".").map(Number); process.exit(maj > 22 || (maj === 22 && (min > 19 || (min === 19 && patch >= 0))) ? 0 : 1)' >/dev/null; then
-      printf 'error: Pi requires Node.js 22.19.0 or newer. Found %s.\n' "$node_version"
+      printf 'error: Pion requires Node.js 22.19.0 or newer. Found %s.\n' "$node_version"
       status=1
     fi
   else
-    printf 'error: Node.js 22.19.0 or newer is required to install Pi.\n'
+    printf 'error: Node.js 22.19.0 or newer is required to install Pion.\n'
     status=1
   fi
 
   if ! command -v npm >/dev/null 2>&1; then
-    printf 'error: npm is required to install Pi.\n'
+    printf 'error: npm is required to install Pion.\n'
     status=1
   fi
 
@@ -198,7 +198,7 @@ install_node_npm_interactive() {
   fi
   exec 3<>/dev/tty
 
-  printf 'Pi needs Node.js 22.19.0 or newer and npm. Install them now with %s? [Y/n] ' "$label" >&3
+  printf 'Pion needs Node.js 22.19.0 or newer and npm. Install them now with %s? [Y/n] ' "$label" >&3
   if ! IFS= read -r answer <&3; then
     answer=
   fi
@@ -290,7 +290,7 @@ install_node_npm() {
 
 install_node_npm_with_progress() {
   method="$1"; label="$2"
-  log_file="${TMPDIR:-/tmp}/pi-installer-node.$$"
+  log_file="${TMPDIR:-/tmp}/pion-installer-node.$$"
   rm -f "$log_file"
   : >"$log_file"
 
@@ -369,7 +369,7 @@ install_node_standalone() {
   }
   node_dist_base="https://nodejs.org/dist/latest-v22.x"
   node_base_dir=$(node_standalone_base_dir)
-  node_tmp_dir="${TMPDIR:-/tmp}/pi-node.$$"
+  node_tmp_dir="${TMPDIR:-/tmp}/pion-node.$$"
 
   rm -rf "$node_tmp_dir"
   mkdir -p "$node_tmp_dir" "$node_base_dir"
@@ -440,9 +440,9 @@ load_standalone_node() {
 
 node_standalone_base_dir() {
   if [ -n "${XDG_DATA_HOME:-}" ]; then
-    printf '%s/pi-node' "$XDG_DATA_HOME"
+    printf '%s/pion-node' "$XDG_DATA_HOME"
   else
-    printf '%s/.local/share/pi-node' "$HOME"
+    printf '%s/.local/share/pion-node' "$HOME"
   fi
 }
 
@@ -534,8 +534,8 @@ print_existing_global_pi_not_writable_message() {
   existing_pi_path="$npm_prefix/bin/$PI_CMD"
 
   printf "npm's global directory is not writable: %s\n" "$npm_prefix" >&2
-  printf 'Pi is already installed at: %s\n\n' "$existing_pi_path" >&2
-  printf 'Installing another copy under %s/.local could leave your shell using the old global pi, so this installer stopped.\n\n' "$HOME" >&2
+  printf 'Pion is already installed at: %s\n\n' "$existing_pi_path" >&2
+  printf 'Installing another copy under %s/.local could leave your shell using the old global pion, so this installer stopped.\n\n' "$HOME" >&2
   printf 'Update or remove the existing global install first. If it was installed with npm, you can run:\n\n' >&2
   printf '  sudo npm install -g --ignore-scripts %s %s\n\n' "$PI_NPM_INSTALL_MIN_AGE_ARG" "$PI_PACKAGE_SPEC" >&2
   printf 'or uninstall it first with:\n\n' >&2
@@ -650,7 +650,7 @@ prompt_add_path_to_profile() {
 
   mkdir -p "${config_file%/*}"
   touch "$config_file"
-  printf '\n# Pi\n%s\n' "$command" >> "$config_file"
+  printf '\n# Pion\n%s\n' "$command" >> "$config_file"
   printf 'Added %s to %s.\n' "$bin_dir" "$config_file"
 }
 
@@ -658,9 +658,9 @@ print_pi_not_on_path_message() {
   pi_bin_dir=$(pi_install_bin_dir)
   active_pi_path=$(command -v "$PI_CMD" 2>/dev/null || true)
 
-  printf 'Pi was installed, but your shell is not using that install yet.\n'
+  printf 'Pion was installed, but your shell is not using that install yet.\n'
   if [ -n "$active_pi_path" ]; then
-    printf 'Your shell currently resolves pi to: %s\n' "$active_pi_path"
+    printf 'Your shell currently resolves pion to: %s\n' "$active_pi_path"
   fi
 
   if [ -n "$pi_bin_dir" ]; then
@@ -668,7 +668,7 @@ print_pi_not_on_path_message() {
     command=$(path_update_command "$pi_bin_dir")
     printf 'Restart your shell or run:\n\n'
     printf '  %s\n\n' "$command"
-    printf 'Then run: pi\n'
+    printf 'Then run: pion\n'
   else
     printf "Check npm's global prefix with:\n\n"
     printf '  npm prefix -g\n\n'
@@ -758,12 +758,12 @@ print_pi_action_menu() {
   fi
 
   if [ -n "${PI_NPM_INSTALL_PREFIX:-}" ]; then
-    printf "npm's global directory is not writable; Pi will be installed under %s.\n\n" "$PI_NPM_INSTALL_PREFIX"
+    printf "npm's global directory is not writable; Pion will be installed under %s.\n\n" "$PI_NPM_INSTALL_PREFIX"
   fi
 
   if [ "$PI_LEGACY_NPM_MIGRATION" = 1 ]; then
-    printf 'This Pi was installed with npm. Pi now uses a managed installation\n'
-    printf 'that pins all dependencies and updates itself with: pi update\n\n'
+    printf 'This Pion was installed with npm. Pion now uses a managed installation\n'
+    printf 'that pins all dependencies and updates itself with: pion update\n\n'
     printf '%sMigration:%s\n\n  ' "$bold" "$reset"
   elif pi_managed_install_enabled; then
     if [ -n "$existing_pi_path" ]; then
@@ -781,23 +781,23 @@ print_pi_action_menu() {
 
   printf '%sChoose an action:%s\n\n' "$bold" "$reset"
   if [ "$PI_LEGACY_NPM_MIGRATION" = 1 ]; then
-    printf '  %s%-4s%s %sMigrate Pi to a managed installation%s %s(default)%s\n' "$cyan" 'y' "$reset" "$green" "$reset" "$dim" "$reset"
-    printf '  %s%-4s%s %sUninstall Pi%s\n' "$cyan" 'u' "$reset" "$red" "$reset"
+    printf '  %s%-4s%s %sMigrate Pion to a managed installation%s %s(default)%s\n' "$cyan" 'y' "$reset" "$green" "$reset" "$dim" "$reset"
+    printf '  %s%-4s%s %sUninstall Pion%s\n' "$cyan" 'u' "$reset" "$red" "$reset"
   elif [ -n "$existing_pi_path" ]; then
-    printf '  %s%-4s%s %sReinstall Pi%s %s(default)%s\n' "$cyan" 'y' "$reset" "$green" "$reset" "$dim" "$reset"
-    printf '  %s%-4s%s %sUninstall Pi%s\n' "$cyan" 'u' "$reset" "$red" "$reset"
+    printf '  %s%-4s%s %sReinstall Pion%s %s(default)%s\n' "$cyan" 'y' "$reset" "$green" "$reset" "$dim" "$reset"
+    printf '  %s%-4s%s %sUninstall Pion%s\n' "$cyan" 'u' "$reset" "$red" "$reset"
   else
-    printf '  %s%-4s%s %sInstall Pi%s %s(default)%s\n' "$cyan" 'y' "$reset" "$green" "$reset" "$dim" "$reset"
+    printf '  %s%-4s%s %sInstall Pion%s %s(default)%s\n' "$cyan" 'y' "$reset" "$green" "$reset" "$dim" "$reset"
   fi
   printf '  %s%-4s%s %sDo nothing%s\n' "$cyan" 'n' "$reset" "$dim" "$reset"
 }
 
 print_pi_action_selection() {
   case "$1" in
-    install) message="Will install Pi." ;;
-    reinstall) message="Will reinstall Pi." ;;
-    migrate) message="Will migrate Pi to a managed installation." ;;
-    uninstall) message="Will uninstall Pi." ;;
+    install) message="Will install Pion." ;;
+    reinstall) message="Will reinstall Pion." ;;
+    migrate) message="Will migrate Pion to a managed installation." ;;
+    uninstall) message="Will uninstall Pion." ;;
     none) message="Chose to do nothing. Exiting." ;;
   esac
   printf '\n%s\n\n' "$message"
@@ -823,10 +823,10 @@ read_tty_key() {
 
 print_pi_install_command() {
   if [ "$PI_LEGACY_NPM_MIGRATION" = 1 ]; then
-    printf 'Pi will install to %s/%s, then remove the npm package:\n  ' "$PI_MANAGED_BIN_DIR" "$PI_CMD"
+    printf 'Pion will install to %s/%s, then remove the npm package:\n  ' "$PI_MANAGED_BIN_DIR" "$PI_CMD"
     print_npm_uninstall_command
   elif pi_managed_install_enabled; then
-    printf 'Pi will install to %s/%s' "$PI_MANAGED_BIN_DIR" "$PI_CMD"
+    printf 'Pion will install to %s/%s' "$PI_MANAGED_BIN_DIR" "$PI_CMD"
   elif [ -n "${PI_NPM_INSTALL_PREFIX:-}" ]; then
     printf 'Using legacy self managed installation\n  npm install -g --ignore-scripts %s --prefix %s %s' "$PI_NPM_INSTALL_MIN_AGE_ARG" "$PI_NPM_INSTALL_PREFIX" "$PI_PACKAGE_SPEC"
   else
@@ -835,14 +835,14 @@ print_pi_install_command() {
 }
 
 pi_managed_install_enabled() {
-  [ "${PI_LEGACY_INSTALL:-}" != 1 ]
+  [ "${PION_LEGACY_INSTALL:-}" != 1 ]
 }
 
 ensure_managed_install_supported() {
   case "$(uname -s)" in
     Darwin|Linux) return 0 ;;
     *)
-      printf 'Managed Pi installs currently support macOS and Linux only.\n' >&2
+      printf 'Managed Pion installs currently support macOS and Linux only.\n' >&2
       return 1
       ;;
   esac
@@ -857,7 +857,7 @@ managed_install_marker_is_valid() {
 const fs = require("node:fs");
 const marker = JSON.parse(fs.readFileSync(process.argv[2], "utf8").replace(/^\uFEFF/, ""));
 if (
-	marker.kind !== "pi-managed-install" ||
+	marker.kind !== "pion-managed-install" ||
 	marker.schemaVersion !== 1 ||
 	marker.layout !== "releases-v1"
 ) {
@@ -904,8 +904,8 @@ NODE
 select_managed_install_dir() {
   existing_pi_path="$1"
 
-  if [ -n "${PI_MANAGED_INSTALL_ROOT:-}" ]; then
-    managed_candidate=${PI_MANAGED_INSTALL_ROOT%/}
+  if [ -n "${PION_MANAGED_INSTALL_ROOT:-}" ]; then
+    managed_candidate=${PION_MANAGED_INSTALL_ROOT%/}
     if managed_install_marker_is_valid "$managed_candidate"; then
       printf '%s' "$managed_candidate"
       return 0
@@ -917,7 +917,7 @@ select_managed_install_dir() {
     return 0
   fi
 
-  managed_agent_dir=${PI_CODING_AGENT_DIR:-$HOME/.pi/agent}
+  managed_agent_dir=${PION_CODING_AGENT_DIR:-$HOME/.pion/agent}
   printf '%s/install' "${managed_agent_dir%/}"
 }
 
@@ -969,8 +969,8 @@ select_managed_path_bin_dir() {
   printf '%s/bin' "$managed_agent_dir"
 }
 
-# A bin directory can host the managed entrypoint if it has no pi yet or its pi
-# already belongs to this managed install. This keeps Pi from taking over a pi
+# A bin directory can host the managed entrypoint if it has no pion yet or its pion
+# already belongs to this managed install. This keeps Pion from taking over a pion
 # owned by something else, such as Homebrew's pi-coding-agent formula.
 managed_path_bin_dir_is_free() {
   free_bin_dir="$1"
@@ -987,7 +987,7 @@ install_pi_package() {
   if [ -t 1 ] && [ "${TERM:-}" != "dumb" ]; then
     install_pi_package_with_progress
   else
-    printf 'Installing Pi...\n\n'
+    printf 'Installing Pion...\n\n'
     run_pi_install error
   fi
 }
@@ -1061,10 +1061,10 @@ download_managed_install_artifacts() {
     return 1
   fi
 
-  printf 'Downloading managed installer package.json for Pi %s\n' "$managed_version" >&2
+  printf 'Downloading managed installer package.json for Pion %s\n' "$managed_version" >&2
   download_installer_artifact "$PI_INSTALLER_DOWNLOAD_BASE/v$managed_version/package.json" "$managed_stage_dir/package.json" "package.json" || return 1
 
-  printf 'Downloading managed installer package-lock.json for Pi %s\n' "$managed_version" >&2
+  printf 'Downloading managed installer package-lock.json for Pion %s\n' "$managed_version" >&2
   download_installer_artifact "$PI_INSTALLER_DOWNLOAD_BASE/v$managed_version/package-lock.json" "$managed_stage_dir/package-lock.json" "package-lock.json" || return 1
 
   validate_managed_install_artifacts "$managed_stage_dir/package.json" "$managed_stage_dir/package-lock.json" "$managed_version"
@@ -1114,7 +1114,7 @@ fs.writeFileSync(
 	markerPath,
 	`${JSON.stringify(
 		{
-			kind: "pi-managed-install",
+			kind: "pion-managed-install",
 			schemaVersion: 1,
 			layout: "releases-v1",
 			entrypoint: { type: entrypointType, path: entrypointPath },
@@ -1168,31 +1168,31 @@ pi_bin_dir=${pi_launcher%/*}
 pi_agent_dir=${pi_bin_dir%/*}
 pi_current_file=$pi_agent_dir/install/current-version
 if ! IFS= read -r pi_current_version < "$pi_current_file"; then
-  printf 'Could not read managed Pi version from %s.\n' "$pi_current_file" >&2
+  printf 'Could not read managed Pion version from %s.\n' "$pi_current_file" >&2
   exit 1
 fi
 case "$pi_current_version" in
   ""|.|..|*[!0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz._+-]*)
-    printf 'Managed Pi version file is invalid: %s\n' "$pi_current_file" >&2
+    printf 'Managed Pion version file is invalid: %s\n' "$pi_current_file" >&2
     exit 1
     ;;
 esac
 pi_release_dir=$pi_agent_dir/install/releases/$pi_current_version
-pi_release_bin=$pi_release_dir/node_modules/.bin/pi
+pi_release_bin=$pi_release_dir/node_modules/.bin/pion
 if [ ! -x "$pi_release_bin" ]; then
-  printf 'Managed Pi executable is missing: %s\n' "$pi_release_bin" >&2
+  printf 'Managed Pion executable is missing: %s\n' "$pi_release_bin" >&2
   exit 1
 fi
-# Node.js installed by the Pi installer is not added to shell profiles, so put
-# it on PATH for pi's shebang and for child processes: npm in pi update and
-# commands run through pi's bash tool.
-pi_node_bin=${XDG_DATA_HOME:-$HOME/.local/share}/pi-node/current/bin
+# Node.js installed by the Pion installer is not added to shell profiles, so put
+# it on PATH for pion's shebang and for child processes: npm in pion update and
+# commands run through pion's bash tool.
+pi_node_bin=${XDG_DATA_HOME:-$HOME/.local/share}/pion-node/current/bin
 if [ -x "$pi_node_bin/node" ]; then
   PATH=$pi_node_bin:$PATH
   export PATH
 fi
-PI_MANAGED_INSTALL_ROOT=$pi_agent_dir/install
-export PI_MANAGED_INSTALL_ROOT
+PION_MANAGED_INSTALL_ROOT=$pi_agent_dir/install
+export PION_MANAGED_INSTALL_ROOT
 exec "$pi_release_bin" "$@"
 EOF
   chmod 755 "$launcher_tmp"
@@ -1248,7 +1248,7 @@ ensure_legacy_npm_pi_removable() {
     return 0
   fi
 
-  printf "npm's global directory is not writable, so the npm-installed Pi at %s cannot be removed.\n" "$PI_EXISTING_PATH" >&2
+  printf "npm's global directory is not writable, so the npm-installed Pion at %s cannot be removed.\n" "$PI_EXISTING_PATH" >&2
   printf 'Remove it first with sudo, then run this installer again:\n\n  sudo ' >&2
   print_npm_uninstall_command >&2
   printf '\n' >&2
@@ -1258,11 +1258,11 @@ ensure_legacy_npm_pi_removable() {
 remove_legacy_npm_pi() {
   npm_loglevel="$1"
 
-  printf 'Removing npm-installed Pi\n' >&2
+  printf 'Removing npm-installed Pion\n' >&2
   run_npm_uninstall_pi "$npm_loglevel" || return
   hash -r
   if [ -e "$PI_EXISTING_PATH" ] || [ -L "$PI_EXISTING_PATH" ]; then
-    printf 'npm uninstall finished, but pi is still present at %s.\n' "$PI_EXISTING_PATH" >&2
+    printf 'npm uninstall finished, but pion is still present at %s.\n' "$PI_EXISTING_PATH" >&2
     return 1
   fi
 }
@@ -1273,7 +1273,7 @@ run_managed_install_pi() {
 
   if [ "$PI_INSTALL_ACTION" != migrate ] && [ -n "${PI_EXISTING_PATH:-}" ]; then
     if ! managed_existing_root=$(managed_install_root_for_command "$PI_EXISTING_PATH") || [ "$managed_existing_root" != "$managed_root" ]; then
-      printf 'Managed install refused to replace Pi at %s. Uninstall it first.\n' "$PI_EXISTING_PATH" >&2
+      printf 'Managed install refused to replace Pion at %s. Uninstall it first.\n' "$PI_EXISTING_PATH" >&2
       return 1
     fi
   fi
@@ -1297,7 +1297,7 @@ run_managed_install_pi() {
     return 1
   fi
 
-  printf 'Installing managed Pi dependencies\n' >&2
+  printf 'Installing managed Pion dependencies\n' >&2
   if (cd "$managed_stage_dir" && npm ci --ignore-scripts "$PI_NPM_INSTALL_MIN_AGE_ARG" --omit=dev --include=optional --no-fund --no-audit "--loglevel=$npm_loglevel" --progress=false); then
     managed_status=0
   else
@@ -1310,12 +1310,12 @@ run_managed_install_pi() {
 
   managed_staged_bin="$managed_stage_dir/node_modules/.bin/$PI_CMD"
   if [ ! -x "$managed_staged_bin" ]; then
-    printf 'Managed Pi executable was not created by npm ci.\n' >&2
+    printf 'Managed Pion executable was not created by npm ci.\n' >&2
     rm -rf "$managed_stage_dir"
     return 1
   fi
 
-  printf 'Verifying managed Pi %s\n' "$managed_version" >&2
+  printf 'Verifying managed Pion %s\n' "$managed_version" >&2
   if managed_installed_version=$("$managed_staged_bin" --version); then
     managed_status=0
   else
@@ -1326,13 +1326,13 @@ run_managed_install_pi() {
     return "$managed_status"
   fi
   if [ "$managed_installed_version" != "$managed_version" ]; then
-    printf 'Managed Pi smoke test returned version %s; expected %s.\n' "$managed_installed_version" "$managed_version" >&2
+    printf 'Managed Pion smoke test returned version %s; expected %s.\n' "$managed_installed_version" "$managed_version" >&2
     rm -rf "$managed_stage_dir"
     return 1
   fi
 
   managed_release_dir="$managed_root/releases/$managed_version"
-  printf 'Activating managed Pi %s\n' "$managed_version" >&2
+  printf 'Activating managed Pion %s\n' "$managed_version" >&2
   if [ -d "$managed_release_dir" ]; then
     rm -rf "$managed_stage_dir"
   elif ! mv "$managed_stage_dir" "$managed_release_dir"; then
@@ -1340,7 +1340,7 @@ run_managed_install_pi() {
     return 1
   fi
 
-  # Remove the npm-installed Pi only after the managed release is verified, so a
+  # Remove the npm-installed Pion only after the managed release is verified, so a
   # failed download or npm ci leaves the existing installation working.
   if [ "$PI_INSTALL_ACTION" = migrate ]; then
     remove_legacy_npm_pi "$npm_loglevel" || return
@@ -1356,12 +1356,12 @@ run_managed_install_pi() {
   write_managed_install_link "$PI_MANAGED_AGENT_DIR" "$PI_MANAGED_BIN_DIR"
   write_managed_current_version "$managed_root" "$managed_version"
   hash -r
-  printf 'Managed Pi install complete\n' >&2
+  printf 'Managed Pion install complete\n' >&2
 }
 
 uninstall_pi_package() {
   if managed_uninstall_root=$(managed_install_root_for_command "$PI_EXISTING_PATH"); then
-    printf 'Uninstalling managed Pi...\n\n'
+    printf 'Uninstalling managed Pion...\n\n'
     managed_uninstall_agent=${managed_uninstall_root%/*}
     managed_uninstall_launcher="$managed_uninstall_agent/bin/$PI_CMD"
     managed_uninstall_entrypoint=$(managed_install_entrypoint_path "$managed_uninstall_root" 2>/dev/null || true)
@@ -1375,25 +1375,25 @@ uninstall_pi_package() {
     rm -rf "$managed_uninstall_root"
     hash -r
     if [ -e "$PI_EXISTING_PATH" ] || [ -L "$PI_EXISTING_PATH" ]; then
-      printf '\nManaged uninstall finished, but pi is still present at:\n\n  %s\n' "$PI_EXISTING_PATH" >&2
+      printf '\nManaged uninstall finished, but pion is still present at:\n\n  %s\n' "$PI_EXISTING_PATH" >&2
       return 1
     fi
     return 0
   fi
 
   if ! npm_package_is_installed_for_uninstall; then
-    printf 'I found pi at:\n\n  %s\n\n' "$PI_EXISTING_PATH" >&2
+    printf 'I found pion at:\n\n  %s\n\n' "$PI_EXISTING_PATH" >&2
     printf 'but npm does not show %s installed there.\n' "$PI_PACKAGE" >&2
     printf 'Nothing was removed.\n' >&2
     return 1
   fi
 
-  printf 'Uninstalling Pi...\n\n'
+  printf 'Uninstalling Pion...\n\n'
   run_npm_uninstall_pi error
   hash -r
 
   if [ -e "$PI_EXISTING_PATH" ] || [ -L "$PI_EXISTING_PATH" ]; then
-    printf '\nnpm uninstall finished, but pi is still present at:\n\n  %s\n' "$PI_EXISTING_PATH" >&2
+    printf '\nnpm uninstall finished, but pion is still present at:\n\n  %s\n' "$PI_EXISTING_PATH" >&2
     return 1
   fi
 }
@@ -1416,7 +1416,7 @@ run_npm_uninstall_pi() {
 }
 
 install_pi_package_with_progress() {
-  log_file="${TMPDIR:-/tmp}/pi-installer-npm.$$"
+  log_file="${TMPDIR:-/tmp}/pion-installer-npm.$$"
   rm -f "$log_file"
   : >"$log_file"
 
@@ -1616,19 +1616,19 @@ npm_install_progress_label() {
       Downloading\ managed\ installer\ package-lock.json*)
         label="fetching managed package lock"
         ;;
-      Installing\ managed\ Pi\ dependencies*)
+      Installing\ managed\ Pion\ dependencies*)
         label="installing managed dependencies"
         ;;
-      Verifying\ managed\ Pi*)
+      Verifying\ managed\ Pion*)
         label="verifying managed package"
         ;;
-      Activating\ managed\ Pi*)
+      Activating\ managed\ Pion*)
         label="activating managed package"
         ;;
-      Removing\ npm-installed\ Pi*)
+      Removing\ npm-installed\ Pion*)
         label="removing npm-installed package"
         ;;
-      Managed\ Pi\ install\ complete*)
+      Managed\ Pion\ install\ complete*)
         label="managed install complete"
         ;;
       npm\ verbose\ title\ npm\ install*|npm\ verbose\ title\ npm\ ci*)
@@ -1679,7 +1679,7 @@ npm_install_progress_label() {
 }
 
 draw_install_progress() {
-  step="$1"; frame="$2"; label="$3"; full="$4"; empty="$5"; title="${6:-Installing Pi}"
+  step="$1"; frame="$2"; label="$3"; full="$4"; empty="$5"; title="${6:-Installing Pion}"
 
   reset="${PI_ESC}[0m"
   dim="${PI_ESC}[2m"
@@ -1729,9 +1729,9 @@ pi_logo_animation() {
   trap 'printf "%s%s\n" "$reset" "$show"; trap - INT TERM; exit 130' INT TERM
   printf '%s%s' "$hide" "${esc}2J${esc}H"
 
-  for y in 0 1 2 3; do draw_logo_frame "$clear" "$reset" 0 left 2 "$y" 0 0; sleep 0.075; done
-  for y in 0 1 2; do draw_logo_frame "$clear" "$reset" 1 top 2 "$y" 0 0; sleep 0.075; done
-  for y in 0 1 2 3 4; do draw_logo_frame "$clear" "$reset" 2 right 5 "$y" 0 0; sleep 0.075; done
+  for y in 0 1 2; do draw_logo_frame "$clear" "$reset" 0 left 2 "$y" 0 0; sleep 0.075; done
+  for y in 0 1 2; do draw_logo_frame "$clear" "$reset" 1 top 3 "$y" 0 0; sleep 0.075; done
+  for y in 0 1 2 3 4 5; do draw_logo_frame "$clear" "$reset" 2 right 5 "$y" 0 0; sleep 0.075; done
 
   draw_logo_frame "$clear" "$reset" 3 none 0 0 0 0; sleep 0.25
   draw_logo_frame "$clear" "$reset" 3 none 0 0 1 0; sleep 0.08
@@ -1791,35 +1791,35 @@ set_logo_cell_color() {
   phase="$1"; active="$2"; ax="$3"; ay="$4"; flash="$5"; white="$6"; y="$7"; x="$8"
 
   if [ "$white" = 1 ]; then
-    if in_cells "$y" "$x" "3,2 3,3 3,4 4,2 4,4 5,2 5,3 5,5 6,2 6,5"; then LOGO_COLOR=white; else LOGO_COLOR=panel; fi
+    if in_cells "$y" "$x" "3,2 3,3 3,4 4,2 4,4 5,2 5,3 5,4 6,2 7,2 7,4"; then LOGO_COLOR=white; else LOGO_COLOR=panel; fi
     return
   fi
-  if [ "$flash" = 1 ] && [ "$y" = 6 ] && [ "$x" -ge 1 ] && [ "$x" -le 6 ]; then LOGO_COLOR=flash; return; fi
+  if [ "$flash" = 1 ] && [ "$y" = 7 ] && [ "$x" -ge 1 ] && [ "$x" -le 6 ]; then LOGO_COLOR=flash; return; fi
 
   case "$active" in
-    left)  if in_piece "$y" "$x" "$ay" "$ax" "0,0 1,0 1,1 2,0"; then LOGO_COLOR=blue; return; fi ;;
-    top)   if in_piece "$y" "$x" "$ay" "$ax" "0,0 0,1 0,2 1,2"; then LOGO_COLOR=coral; return; fi ;;
-    right) if in_piece "$y" "$x" "$ay" "$ax" "0,0 1,0 2,0 2,1"; then LOGO_COLOR=gold; return; fi ;;
+    left)  if in_piece "$y" "$x" "$ay" "$ax" "0,0 1,0 2,0 3,0 4,0"; then LOGO_COLOR=blue; return; fi ;;
+    top)   if in_piece "$y" "$x" "$ay" "$ax" "0,0 0,1 1,1 2,0 2,1"; then LOGO_COLOR=coral; return; fi ;;
+    right) if in_piece "$y" "$x" "$ay" "$ax" "0,0"; then LOGO_COLOR=gold; return; fi ;;
   esac
 
   if [ "$phase" = 4 ]; then
-    if in_cells "$y" "$x" "2,2 2,3 2,4 3,4"; then LOGO_COLOR=coral; return; fi
-    if in_cells "$y" "$x" "3,2 4,2 4,3 5,2"; then LOGO_COLOR=blue; return; fi
-    if in_cells "$y" "$x" "4,5 5,5"; then LOGO_COLOR=gold; return; fi
+    if in_cells "$y" "$x" "2,3 2,4 3,4 4,3 4,4"; then LOGO_COLOR=coral; return; fi
+    if in_cells "$y" "$x" "2,2 3,2 4,2 5,2 6,2"; then LOGO_COLOR=blue; return; fi
+    if in_cells "$y" "$x" "6,4"; then LOGO_COLOR=gold; return; fi
     LOGO_COLOR=panel; return
   fi
 
   if [ "$phase" -ge 5 ]; then
-    if in_cells "$y" "$x" "3,2 3,3 3,4 4,4"; then LOGO_COLOR=coral; return; fi
-    if in_cells "$y" "$x" "4,2 5,2 5,3 6,2"; then LOGO_COLOR=blue; return; fi
-    if in_cells "$y" "$x" "5,5 6,5"; then LOGO_COLOR=gold; return; fi
+    if in_cells "$y" "$x" "3,3 3,4 4,4 5,3 5,4"; then LOGO_COLOR=coral; return; fi
+    if in_cells "$y" "$x" "3,2 4,2 5,2 6,2 7,2"; then LOGO_COLOR=blue; return; fi
+    if in_cells "$y" "$x" "7,4"; then LOGO_COLOR=gold; return; fi
     LOGO_COLOR=panel; return
   fi
 
-  if [ "$phase" -le 3 ] && in_cells "$y" "$x" "6,1 6,2 6,3 6,4"; then LOGO_COLOR=turquoise; return; fi
-  if [ "$phase" -ge 2 ] && in_cells "$y" "$x" "2,2 2,3 2,4 3,4"; then LOGO_COLOR=coral; return; fi
-  if [ "$phase" -ge 1 ] && in_cells "$y" "$x" "3,2 4,2 4,3 5,2"; then LOGO_COLOR=blue; return; fi
-  if [ "$phase" -ge 3 ] && in_cells "$y" "$x" "4,5 5,5 6,5 6,6"; then LOGO_COLOR=gold; return; fi
+  if [ "$phase" -le 3 ] && in_cells "$y" "$x" "8,1 8,2 8,3 8,4"; then LOGO_COLOR=turquoise; return; fi
+  if [ "$phase" -ge 2 ] && in_cells "$y" "$x" "2,3 2,4 3,4 4,3 4,4"; then LOGO_COLOR=coral; return; fi
+  if [ "$phase" -ge 1 ] && in_cells "$y" "$x" "2,2 3,2 4,2 5,2 6,2"; then LOGO_COLOR=blue; return; fi
+  if [ "$phase" -ge 3 ] && in_cells "$y" "$x" "5,5"; then LOGO_COLOR=gold; return; fi
 
   LOGO_COLOR=panel
 }
@@ -1852,7 +1852,7 @@ print_static_logo() {
 
   ██████
   ██  ██
-  ████  ██
+  ██████
   ██    ██
 
 EOF

@@ -41,7 +41,7 @@ describe("DefaultResourceLoader", () => {
 		});
 
 		it("should not treat a project manifest as the owner of a project extension", async () => {
-			const extensionsDir = join(cwd, ".pi", "extensions");
+			const extensionsDir = join(cwd, ".pion", "extensions");
 			mkdirSync(extensionsDir, { recursive: true });
 			writeFileSync(
 				join(cwd, "package.json"),
@@ -86,7 +86,7 @@ describe("DefaultResourceLoader", () => {
 
 		// #11088
 		it("should warn and keep loading when a configured package cannot be installed", async () => {
-			vi.stubEnv("PI_OFFLINE", "");
+			vi.stubEnv("PION_OFFLINE", "");
 			const loader = new DefaultResourceLoader({
 				cwd,
 				agentDir,
@@ -103,12 +103,12 @@ describe("DefaultResourceLoader", () => {
 			expect(warnings).toHaveLength(1);
 			expect(warnings[0].path).toBe("npm:broken-package");
 			expect(warnings[0].warning).toMatch(/^failed to install \(.*failed with code 1\)\./);
-			expect(warnings[0].warning).toContain('Run "pi remove npm:broken-package" to remove it from settings.json.');
+			expect(warnings[0].warning).toContain('Run "pion remove npm:broken-package" to remove it from settings.json.');
 		});
 
 		// #11088
-		it("should point temporary extension sources at the source instead of pi remove", async () => {
-			vi.stubEnv("PI_OFFLINE", "");
+		it("should point temporary extension sources at the source instead of pion remove", async () => {
+			vi.stubEnv("PION_OFFLINE", "");
 			const loader = new DefaultResourceLoader({
 				cwd,
 				agentDir,
@@ -124,18 +124,18 @@ describe("DefaultResourceLoader", () => {
 			expect(warnings).toHaveLength(1);
 			expect(warnings[0].path).toBe("npm:broken-package");
 			expect(warnings[0].warning).toContain("Check the source and try again.");
-			expect(warnings[0].warning).not.toContain("pi remove");
+			expect(warnings[0].warning).not.toContain("pion remove");
 		});
 
 		// #11088
-		it("should point project extension packages at pi remove --local", async () => {
-			vi.stubEnv("PI_OFFLINE", "");
+		it("should point project extension packages at pion remove --local", async () => {
+			vi.stubEnv("PION_OFFLINE", "");
 			writeFileSync(
 				join(agentDir, "settings.json"),
 				JSON.stringify({ npmCommand: [process.execPath, "-e", "process.exit(1)"] }),
 			);
-			mkdirSync(join(cwd, ".pi"), { recursive: true });
-			writeFileSync(join(cwd, ".pi", "settings.json"), JSON.stringify({ packages: ["npm:broken-package"] }));
+			mkdirSync(join(cwd, ".pion"), { recursive: true });
+			writeFileSync(join(cwd, ".pion", "settings.json"), JSON.stringify({ packages: ["npm:broken-package"] }));
 			const loader = new DefaultResourceLoader({
 				cwd,
 				agentDir,
@@ -146,12 +146,12 @@ describe("DefaultResourceLoader", () => {
 
 			const warnings = loader.getExtensions().warnings ?? [];
 			expect(warnings).toHaveLength(1);
-			expect(warnings[0].warning).toContain('Run "pi remove npm:broken-package --local"');
+			expect(warnings[0].warning).toContain('Run "pion remove npm:broken-package --local"');
 		});
 
 		// #11088
 		it("should warn once about a failing install when project trust is resolved", async () => {
-			vi.stubEnv("PI_OFFLINE", "");
+			vi.stubEnv("PION_OFFLINE", "");
 			const loader = new DefaultResourceLoader({
 				cwd,
 				agentDir,
@@ -266,7 +266,7 @@ Prompt content.`,
 
 		it("should prefer project resources over user on name collisions", async () => {
 			const userPromptsDir = join(agentDir, "prompts");
-			const projectPromptsDir = join(cwd, ".pi", "prompts");
+			const projectPromptsDir = join(cwd, ".pion", "prompts");
 			mkdirSync(userPromptsDir, { recursive: true });
 			mkdirSync(projectPromptsDir, { recursive: true });
 			const userPromptPath = join(userPromptsDir, "commit.md");
@@ -275,7 +275,7 @@ Prompt content.`,
 			writeFileSync(projectPromptPath, "Project prompt");
 
 			const userSkillDir = join(agentDir, "skills", "collision-skill");
-			const projectSkillDir = join(cwd, ".pi", "skills", "collision-skill");
+			const projectSkillDir = join(cwd, ".pion", "skills", "collision-skill");
 			mkdirSync(userSkillDir, { recursive: true });
 			mkdirSync(projectSkillDir, { recursive: true });
 			const userSkillPath = join(userSkillDir, "SKILL.md");
@@ -302,9 +302,9 @@ Project skill`,
 			) as { name: string; vars?: Record<string, string> };
 			baseTheme.name = "collision-theme";
 			const userThemePath = join(agentDir, "themes", "collision.json");
-			const projectThemePath = join(cwd, ".pi", "themes", "collision.json");
+			const projectThemePath = join(cwd, ".pion", "themes", "collision.json");
 			mkdirSync(join(agentDir, "themes"), { recursive: true });
-			mkdirSync(join(cwd, ".pi", "themes"), { recursive: true });
+			mkdirSync(join(cwd, ".pion", "themes"), { recursive: true });
 			writeFileSync(userThemePath, JSON.stringify(baseTheme, null, 2));
 			if (baseTheme.vars) {
 				baseTheme.vars.accent = "#ff00ff";
@@ -338,9 +338,9 @@ Project skill`,
 			);
 
 			mkdirSync(agentDir, { recursive: true });
-			mkdirSync(join(cwd, ".pi"), { recursive: true });
+			mkdirSync(join(cwd, ".pion"), { recursive: true });
 			symlinkSync(sharedExtDir, join(agentDir, "extensions"), "dir");
-			symlinkSync(sharedExtDir, join(cwd, ".pi", "extensions"), "dir");
+			symlinkSync(sharedExtDir, join(cwd, ".pion", "extensions"), "dir");
 
 			const loader = new DefaultResourceLoader({ cwd, agentDir });
 			await loader.reload();
@@ -351,12 +351,12 @@ Project skill`,
 
 			// mergePaths processes project paths before user paths, so the project
 			// alias is the canonical survivor.
-			expect(extensionsResult.extensions[0].path).toBe(join(cwd, ".pi", "extensions", "shared.ts"));
+			expect(extensionsResult.extensions[0].path).toBe(join(cwd, ".pion", "extensions", "shared.ts"));
 		});
 
 		it("should load user extensions before trust and reuse them after trust resolves", async () => {
 			const userExtDir = join(agentDir, "extensions");
-			const projectExtDir = join(cwd, ".pi", "extensions");
+			const projectExtDir = join(cwd, ".pion", "extensions");
 			mkdirSync(userExtDir, { recursive: true });
 			mkdirSync(projectExtDir, { recursive: true });
 			const loadCountKey = `__piTrustPreloadCount_${Date.now()}_${Math.random().toString(36).slice(2)}`;
@@ -395,7 +395,7 @@ export default function(pi) {
 
 			const extensionsResult = loader.getExtensions();
 			expect(extensionsResult.extensions.map((extension) => extension.path)).toEqual([
-				join(cwd, ".pi", "extensions", "project.ts"),
+				join(cwd, ".pion", "extensions", "project.ts"),
 				join(userExtDir, "user.ts"),
 			]);
 			expect(globalState[loadCountKey]).toBe(1);
@@ -403,7 +403,7 @@ export default function(pi) {
 
 		it("should keep both extensions loaded when command names collide", async () => {
 			const userExtDir = join(agentDir, "extensions");
-			const projectExtDir = join(cwd, ".pi", "extensions");
+			const projectExtDir = join(cwd, ".pion", "extensions");
 			mkdirSync(userExtDir, { recursive: true });
 			mkdirSync(projectExtDir, { recursive: true });
 
@@ -570,8 +570,8 @@ Content`,
 			expect(agentsFiles).toEqual([]);
 		});
 
-		it("should discover SYSTEM.md from cwd/.pi", async () => {
-			const piDir = join(cwd, ".pi");
+		it("should discover SYSTEM.md from cwd/.pion", async () => {
+			const piDir = join(cwd, ".pion");
 			mkdirSync(piDir, { recursive: true });
 			writeFileSync(join(piDir, "SYSTEM.md"), "You are a helpful assistant.");
 
@@ -582,7 +582,7 @@ Content`,
 		});
 
 		it("should skip project resources that require trust when project is not trusted", async () => {
-			const piDir = join(cwd, ".pi");
+			const piDir = join(cwd, ".pion");
 			const extensionsDir = join(piDir, "extensions");
 			const skillDir = join(piDir, "skills", "project-skill");
 			const promptsDir = join(piDir, "prompts");
@@ -628,7 +628,7 @@ Project skill content`,
 		});
 
 		it("should discover APPEND_SYSTEM.md", async () => {
-			const piDir = join(cwd, ".pi");
+			const piDir = join(cwd, ".pion");
 			mkdirSync(piDir, { recursive: true });
 			writeFileSync(join(piDir, "APPEND_SYSTEM.md"), "Additional instructions.");
 
@@ -641,7 +641,7 @@ Project skill content`,
 
 	describe("system prompt sources", () => {
 		it("exposes discovered project SYSTEM.md as the system prompt source", async () => {
-			const piDir = join(cwd, ".pi");
+			const piDir = join(cwd, ".pion");
 			const systemPromptPath = join(piDir, "SYSTEM.md");
 			mkdirSync(piDir, { recursive: true });
 			writeFileSync(systemPromptPath, "Project system prompt.");
@@ -684,7 +684,7 @@ Project skill content`,
 		});
 
 		it("exposes discovered APPEND_SYSTEM.md as an append system prompt source", async () => {
-			const piDir = join(cwd, ".pi");
+			const piDir = join(cwd, ".pion");
 			const appendSystemPromptPath = join(piDir, "APPEND_SYSTEM.md");
 			mkdirSync(piDir, { recursive: true });
 			writeFileSync(appendSystemPromptPath, "Project append prompt.");
@@ -1195,8 +1195,8 @@ export default function(pi: ExtensionAPI) {
 		});
 
 		it("should skip disabledBuiltinExtensions even when settings or -e enable them", async () => {
-			mkdirSync(join(cwd, ".pi"), { recursive: true });
-			writeFileSync(join(cwd, ".pi", "settings.json"), JSON.stringify({ extensions: ["+builtin:mcp"] }));
+			mkdirSync(join(cwd, ".pion"), { recursive: true });
+			writeFileSync(join(cwd, ".pion", "settings.json"), JSON.stringify({ extensions: ["+builtin:mcp"] }));
 			const loaded: string[] = [];
 			const loader = new DefaultResourceLoader({
 				cwd,
@@ -1219,9 +1219,9 @@ export default function(pi: ExtensionAPI) {
 			const userExtDir = join(agentDir, "extensions");
 			mkdirSync(userExtDir, { recursive: true });
 			writeFileSync(join(userExtDir, "user.ts"), "export default function() {}");
-			mkdirSync(join(cwd, ".pi"), { recursive: true });
+			mkdirSync(join(cwd, ".pion"), { recursive: true });
 			// A project override gives the built-in project scope, which must not move it ahead.
-			writeFileSync(join(cwd, ".pi", "settings.json"), JSON.stringify({ extensions: ["+builtin:mcp"] }));
+			writeFileSync(join(cwd, ".pion", "settings.json"), JSON.stringify({ extensions: ["+builtin:mcp"] }));
 			const loader = new DefaultResourceLoader({
 				cwd,
 				agentDir,
@@ -1258,9 +1258,9 @@ export default function(pi: ExtensionAPI) {
 
 		it("should apply project built-in extension overrides after trust resolves", async () => {
 			writeFileSync(join(agentDir, "settings.json"), JSON.stringify({ extensions: ["-builtin:mcp"] }));
-			mkdirSync(join(cwd, ".pi"), { recursive: true });
+			mkdirSync(join(cwd, ".pion"), { recursive: true });
 			writeFileSync(
-				join(cwd, ".pi", "settings.json"),
+				join(cwd, ".pion", "settings.json"),
 				JSON.stringify({ extensions: ["+builtin:mcp", "-builtin:llama"] }),
 			);
 			const loaded: string[] = [];

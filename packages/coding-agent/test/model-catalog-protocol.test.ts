@@ -79,7 +79,7 @@ function startCatalogServer(requests: string[]): Promise<Server> {
 					.writeHead(200, {
 						"content-type": "application/json",
 						"last-modified": lastModified,
-						"x-pi-model-catalog-revision": catalog.revision,
+						"x-pion-model-catalog-revision": catalog.revision,
 					})
 					.end(JSON.stringify(body));
 			}

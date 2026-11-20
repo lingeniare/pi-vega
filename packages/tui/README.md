@@ -944,8 +944,8 @@ node test/chat-simple.ts
 
 ### Debug logging
 
-Set `PI_TUI_WRITE_LOG` to capture the raw ANSI stream written to stdout.
+Set `PION_TUI_WRITE_LOG` to capture the raw ANSI stream written to stdout.
 
 ```bash
-PI_TUI_WRITE_LOG=/tmp/tui-ansi.log node test/chat-simple.ts
+PION_TUI_WRITE_LOG=/tmp/tui-ansi.log node test/chat-simple.ts
 ```

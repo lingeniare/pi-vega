@@ -25,7 +25,7 @@ describe("AgentSessionRuntime.takeUnreportedDiagnostics", () => {
 
 	/** A runtime whose factory returns whatever `nextDiagnostics` holds when it runs. */
 	async function createRuntimeForTest(nextDiagnostics: { current: AgentSessionRuntimeDiagnostic[] }) {
-		const tempDir = join(tmpdir(), `pi-runtime-diagnostics-${Date.now()}-${Math.random().toString(36).slice(2)}`);
+		const tempDir = join(tmpdir(), `pion-runtime-diagnostics-${Date.now()}-${Math.random().toString(36).slice(2)}`);
 		mkdirSync(tempDir, { recursive: true });
 		const faux = registerFauxProvider({ models: [{ id: "faux-1", reasoning: false }] });
 		const authStorage = AuthStorage.inMemory();

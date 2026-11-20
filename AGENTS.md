@@ -65,11 +65,11 @@ Binding for Chord v2 (`packages/chord/src/`) and its tests, when writing and whe
 - Hydrate/update locally with `npm install --ignore-scripts`; clean/CI-style with `npm ci --ignore-scripts`. Don't run lifecycle scripts unless the user asks.
 - If dep metadata changes, refresh `package-lock.json` with `npm install --package-lock-only --ignore-scripts`.
 - If `packages/coding-agent/install-lock/` needs regen, run `node scripts/generate-coding-agent-install-lock.mjs` (verify with `--check` or `npm run check`). New deps with lifecycle scripts require review and an explicit allowlist entry in that script; never add one silently.
-- Pre-commit blocks lockfile commits unless `PI_ALLOW_LOCKFILE_CHANGE=1`. Don't bypass unless the user wants the lockfile change committed.
+- Pre-commit blocks lockfile commits unless `PION_ALLOW_LOCKFILE_CHANGE=1`. Don't bypass unless the user wants the lockfile change committed.
 
 ## Git
 
-Multiple pi sessions may be running in this cwd at the same time, each modifying different files. Git operations that touch unstaged, staged, or untracked files outside your own changes will stomp on other sessions' work. Follow these rules:
+Multiple pion sessions may be running in this cwd at the same time, each modifying different files. Git operations that touch unstaged, staged, or untracked files outside your own changes will stomp on other sessions' work. Follow these rules:
 
 Committing:
 
@@ -123,11 +123,11 @@ Work on a p3 (Pi Roam) package in `apps/p3` starts by reading [apps/p3/docs/READ
 
 ## Building p2's web UI
 
-For building or changing p2's web UI (`apps/p2`), load and follow [.pi/skills/p2-ui.md](.pi/skills/p2-ui.md).
+For building or changing p2's web UI (`apps/p2`), load and follow [.pion/skills/p2-ui.md](.pion/skills/p2-ui.md).
 
-## Testing pi Interactive Mode with tmux
+## Testing pion Interactive Mode with tmux
 
-For testing pi's interactive mode, load and follow [.pi/skills/interactive-testing.md](.pi/skills/interactive-testing.md).
+For testing pion's interactive mode, load and follow [.pion/skills/interactive-testing.md](.pion/skills/interactive-testing.md).
 
 ## Changelog
 
@@ -148,7 +148,7 @@ Attribution:
 
 ## Releasing
 
-For release preparation, publishing, verification, or recovery, load and follow [.pi/skills/release.md](.pi/skills/release.md).
+For release preparation, publishing, verification, or recovery, load and follow [.pion/skills/release.md](.pion/skills/release.md).
 
 ## User Override
 
@@ -156,7 +156,17 @@ If the user's instructions conflict with any rule in this document, ask for expl
 
 ## Fork notes (pi-vega)
 
+- Branding is `pion`: CLI binary `pion` (no `pi` alias), config dirs `~/.pion/agent` and `.pion`, env vars `PION_*`. Branding flows through `piConfig` in `packages/coding-agent/package.json` (`name`, `configDir`) — keep using `APP_NAME`/`APP_TITLE`/`APP_DISPLAY_NAME`/`CONFIG_DIR_NAME`/`ENV_*` from `src/config.ts` instead of hardcoded strings. Extension protocol stays upstream-compatible: package manifest field `"pi"`, `PiManifest`, `PI_AI_VERSION`, package scope `@earendil-works/*` — do not rename these. Functional upstream endpoints (model catalog, OAuth client metadata docs, share viewer, `pi.dev/schemas`) stay on pi.dev.
+- Keep fork changes minimal and isolated so `upstream/main` merges stay cheap: prefer existing extension points and config-driven branding over rewrites of upstream logic; resolve branding merge conflicts in favor of `pion` for user-facing surfaces without reverting upstream structure. Upstream will keep adding `.pi/` files on merge; move them into `.pion/` when syncing.
+- Logo is rebranded to a "P" glyph with a yellow particle (pion = particle); wordmark is `Pi`+`on`. Logo spots, keep on merge: `packages/coding-agent/src/modes/interactive/components/pi-logo.ts` (half-block glyph + `piWordmark`), `easter-egg-3d.ts` (`PI_LOGO_PIXELS`), `first-time-setup.ts` (`SETUP_LOGO_LINES`), and the assembly animations in `install/install.sh` + `install/install.ps1` (`set_logo_cell_color`/`Get-LogoCellColor`, `print_static_logo`/`Write-StaticLogo`, piece-flight loops). Symbol/file names stay `pi*` — they are internal, renaming only adds merge churn.
 - Upstream remote: `upstream` = https://github.com/earendil-works/pi.git. Sync with `git fetch upstream --tags && git merge upstream/main` (our `v1.4.0` tag differs from upstream's; the tag fetch rejection is expected).
 - After merging upstream, hydrate the gitignored model data before typecheck/tests: `npm run hydrate-model-data` in `packages/ai` (needs network).
 - VEGA extension points, keep on merge: `packages/ai/src/providers/vega.ts`, `packages/ai/src/auth/oauth/vega.ts`, registrations in `providers/all.ts`, `types.ts` (`KnownProvider`), `env-api-keys.ts`, `bun-oauth.ts`, `auth/oauth/load.ts`, `lazy-oauth.ts`; `settings-manager.ts` `defaultTools` (`vega: [codemode, web_fetch, web_search]`); `preferred-providers.ts` lists `vega` first; `extensions/web/` built-ins; release plumbing in `scripts/build-vega-release.mjs`, `install/`, `version-check.ts`, `package-manager-cli.ts` (GitHub Releases defaults).
-- Known upstream Windows-only test failures in `packages/coding-agent/test/package-command-paths.test.ts` (4 tests: backslash in stored extension paths, "Built-in" list, pnpm self-update hint). Reproduced on pristine `upstream/main`; upstream CI runs tests on ubuntu only. Do not "fix" by diverging; report upstream if needed.
+- Known upstream Windows-only test failures (reproduced on pristine `upstream/main`; upstream CI runs tests on ubuntu only — do not "fix" by diverging):
+  - `config.test.ts` (7): POSIX-style npm prefix layout and chmod behavior in self-update detection.
+  - `package-command-paths.test.ts`: backslash in stored extension paths, "Built-in" list, `pion --version` reporting "no version" (`.cmd` shims need `shell:true` spawn), pnpm self-update hint.
+  - `session-manager`, `sdk-session-manager`, `footer-width`, `trust-selector`, `external-editor`, `subagent-extension` (`B:\~BUN`, SIGTERM): path separator and platform semantics assumptions.
+  - Symlink `EPERM` tests (`auth-storage`, `paths`, `session-selector-path-delete`, `resource-loader`, `file-mutation-queue`, `package-manager`): Windows requires elevated privileges for symlinks.
+  - `tools.test.ts` EACCES-vs-EPERM, `mcp-command` (cmd.exe error wording), `interactive-mode-suspend` (win32 early-return hits unstubbed `showStatus`), `2791-fswatch-error-crash` (`c:` ESM URL scheme).
+  - `external-editor` fails when `process.execPath` contains spaces (unquoted command string).
+- Environment-dependent: `package-command-paths` "initialize fresh project settings" and `package-manager` `~` expansion tests fail when the real user's `~/.agents/skills` exists (ancestor walk in `hasTrustRequiringProjectResources` requires trust). Run tests via `./test.sh` for home isolation.

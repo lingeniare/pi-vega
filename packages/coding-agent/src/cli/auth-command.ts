@@ -38,14 +38,14 @@ export function isAuthCommandHelp(args: string[]): boolean {
 
 export function printAuthCommandHelp(): void {
 	console.log(`Usage:
-  pi auth login <provider> [--api-key] [--no-browser]
-  pi auth logout <provider>
-  pi auth print-api-key [--provider <provider>] [--model <model>]
-  pi auth print-bearer-token [--provider <provider>] [--model <model>] [--min-expiry <duration>]
-  pi auth check [--provider <provider>] [--model <model>] [--json] [--credentials] [--no-refresh]
+  ${APP_NAME} auth login <provider> [--api-key] [--no-browser]
+  ${APP_NAME} auth logout <provider>
+  ${APP_NAME} auth print-api-key [--provider <provider>] [--model <model>]
+  ${APP_NAME} auth print-bearer-token [--provider <provider>] [--model <model>] [--min-expiry <duration>]
+  ${APP_NAME} auth check [--provider <provider>] [--model <model>] [--json] [--credentials] [--no-refresh]
 
 Log in to and out of model providers, print their credentials for external clients, or check that they are ready.
-Credentials are stored in ~/.pi/agent/auth.json.
+Credentials are stored in ~/.pion/agent/auth.json.
 
 Commands:
   login <provider>        Sign in with an account in the browser, or save an API key, then exit

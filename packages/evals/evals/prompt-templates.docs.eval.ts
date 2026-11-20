@@ -25,7 +25,7 @@ function registerScenario(scenario: (typeof SCENARIOS)[number]): void {
 	const harness = createPiDocumentationEvalHarness({
 		output: ({ session, agentDir }) => {
 			const workspace = session.sessionManager.getCwd();
-			const projectPath = join(workspace, ".pi", "prompts", `${TEMPLATE_NAME}.md`);
+			const projectPath = join(workspace, ".pion", "prompts", `${TEMPLATE_NAME}.md`);
 			const userPath = join(agentDir, "prompts", `${TEMPLATE_NAME}.md`);
 			const expectedPath = scenario.scope === "project" ? projectPath : userPath;
 			const otherPath = scenario.scope === "project" ? userPath : projectPath;

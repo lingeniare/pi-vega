@@ -31,15 +31,15 @@ describe("createAgentSession client identity", () => {
 		agentDir = join(tempDir, "agent");
 		mkdirSync(cwd, { recursive: true });
 		mkdirSync(agentDir, { recursive: true });
-		originalTelemetryEnv = process.env.PI_TELEMETRY;
-		delete process.env.PI_TELEMETRY;
+		originalTelemetryEnv = process.env.PION_TELEMETRY;
+		delete process.env.PION_TELEMETRY;
 	});
 
 	afterEach(() => {
 		if (originalTelemetryEnv === undefined) {
-			delete process.env.PI_TELEMETRY;
+			delete process.env.PION_TELEMETRY;
 		} else {
-			process.env.PI_TELEMETRY = originalTelemetryEnv;
+			process.env.PION_TELEMETRY = originalTelemetryEnv;
 		}
 		if (tempDir && existsSync(tempDir)) {
 			rmSync(tempDir, { recursive: true, force: true });
@@ -139,7 +139,7 @@ describe("createAgentSession client identity", () => {
 		}
 	}
 
-	it("identifies pi with a detailed User-Agent and no attribution by default", async () => {
+	it("identifies pion with a detailed User-Agent and no attribution by default", async () => {
 		const model = createModel("openrouter", "https://openrouter.ai/api/v1");
 		const options = await captureOptions(model);
 
@@ -157,8 +157,8 @@ describe("createAgentSession client identity", () => {
 			attribution: PI_ATTRIBUTION,
 		});
 		expect(getAttributionHeaders(model, options?.identity)).toEqual({
-			"HTTP-Referer": "https://pi.dev",
-			"X-OpenRouter-Title": "pi",
+			"HTTP-Referer": "https://vega.codes",
+			"X-OpenRouter-Title": "pion",
 			"X-OpenRouter-Categories": "cli-agent",
 		});
 	});
@@ -171,8 +171,8 @@ describe("createAgentSession client identity", () => {
 		expect(getAttributionHeaders(model, options?.identity)).toEqual({});
 	});
 
-	it("turns attribution off with PI_TELEMETRY=0", async () => {
-		process.env.PI_TELEMETRY = "0";
+	it("turns attribution off with PION_TELEMETRY=0", async () => {
+		process.env.PION_TELEMETRY = "0";
 		const options = await captureOptions(createModel("openrouter", "https://openrouter.ai/api/v1"));
 
 		expect(options?.identity?.attribution).toBeNull();

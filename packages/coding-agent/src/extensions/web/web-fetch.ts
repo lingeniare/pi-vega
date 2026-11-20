@@ -12,7 +12,7 @@ export const WEB_FETCH_TOOL_NAME = "web_fetch";
 
 const FETCH_TIMEOUT_MS = 30_000;
 const MAX_DOWNLOAD_BYTES = 1024 * 1024;
-const USER_AGENT = "pi-web-fetch/1.0 (+https://pi.dev)";
+const USER_AGENT = "pion-web-fetch/1.0 (+https://github.com/lingeniare/pi-vega)";
 
 export const webFetchSchema = Type.Object({
 	url: Type.String({ description: "The http(s) URL to fetch and read." }),

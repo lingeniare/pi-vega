@@ -10,7 +10,7 @@
  * which can be cheaper/faster than the main conversation model.
  *
  * Usage:
- *   pi --extension examples/extensions/custom-compaction.ts
+ *   pion --extension examples/extensions/custom-compaction.ts
  */
 
 import { uuidv7 } from "@earendil-works/pi-ai";

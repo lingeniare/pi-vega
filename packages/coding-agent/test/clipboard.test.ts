@@ -42,7 +42,7 @@ beforeEach(() => {
 		"WT_SESSION",
 		"WSL_DISTRO_NAME",
 		"WSLENV",
-		"PI_CLIPBOARD_OSC52",
+		"PION_CLIPBOARD_OSC52",
 	])
 		vi.stubEnv(name, "");
 	mocks.platform.mockReturnValue("darwin");
@@ -155,11 +155,11 @@ describe("copyToClipboard", () => {
 		["darwin", undefined],
 		["win32", undefined],
 		["linux", ":99"],
-	] as const)("PI_CLIPBOARD_OSC52=1 emits OSC 52 after a successful %s copy", async (platform, display) => {
+	] as const)("PION_CLIPBOARD_OSC52=1 emits OSC 52 after a successful %s copy", async (platform, display) => {
 		// Regression test for #10826, #10835, #10114: remote clients without SSH markers.
 		mocks.platform.mockReturnValue(platform);
 		if (display) vi.stubEnv("DISPLAY", display);
-		vi.stubEnv("PI_CLIPBOARD_OSC52", "1");
+		vi.stubEnv("PION_CLIPBOARD_OSC52", "1");
 		await copyToClipboard("hello");
 		if (platform === "linux") {
 			expect(mocks.command).toHaveBeenCalledWith("xclip", ["-selection", "clipboard"], {

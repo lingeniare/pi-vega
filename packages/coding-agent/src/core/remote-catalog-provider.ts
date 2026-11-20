@@ -9,7 +9,7 @@ import {
 } from "@earendil-works/pi-ai";
 import { VERSION } from "../config.ts";
 import { fetchWithRetry } from "../utils/management-http.ts";
-import { getPiUserAgent } from "../utils/pi-user-agent.ts";
+import { getPionUserAgent } from "../utils/pion-user-agent.ts";
 
 const DEFAULT_CATALOG_BASE_URL = "https://pi.dev";
 const REMOTE_CATALOG_ATTEMPT_TIMEOUT_MS = 4_000;
@@ -92,7 +92,7 @@ function requestCatalog(
 		{
 			headers: {
 				accept: "application/json",
-				"User-Agent": getPiUserAgent(VERSION),
+				"User-Agent": getPionUserAgent(VERSION),
 				...(validator ? { "if-none-match": validator } : {}),
 			},
 			signal,

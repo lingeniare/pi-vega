@@ -16,6 +16,7 @@ import lockfile from "proper-lockfile";
 import { selectConfig } from "./cli/config-selector.ts";
 import { createProjectTrustContext } from "./cli/project-trust.ts";
 import {
+	APP_DISPLAY_NAME,
 	APP_NAME,
 	CONFIG_DIR_NAME,
 	detectInstallChange,
@@ -40,7 +41,7 @@ import { SettingsManager } from "./core/settings-manager.ts";
 import { hasTrustRequiringProjectResources, ProjectTrustStore } from "./core/trust-manager.ts";
 import { spawnProcess, spawnProcessSync, waitForChildProcess } from "./utils/child-process.ts";
 import { canonicalizePath, getCwdRelativePath } from "./utils/paths.ts";
-import { getPiUserAgent } from "./utils/pi-user-agent.ts";
+import { getPionUserAgent } from "./utils/pion-user-agent.ts";
 import { stripBom } from "./utils/text.ts";
 import { formatVersionCheckError, getLatestPiRelease, isNewerPackageVersion } from "./utils/version-check.ts";
 import {
@@ -59,7 +60,7 @@ const MANAGED_INSTALL_MARKER = "managed-install.json";
 const MANAGED_RELEASE_VERSION_RE = /^\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?(?:\+[0-9A-Za-z.-]+)?$/;
 
 function getActiveManagedInstallRoot(): string | undefined {
-	const configuredRoot = process.env.PI_MANAGED_INSTALL_ROOT?.trim();
+	const configuredRoot = process.env.PION_MANAGED_INSTALL_ROOT?.trim();
 	if (!configuredRoot) return undefined;
 
 	const managedRoot = resolve(configuredRoot);
@@ -75,7 +76,7 @@ function getActiveManagedInstallRoot(): string | undefined {
 			layout?: unknown;
 			schemaVersion?: unknown;
 		};
-		if (marker.kind !== "pi-managed-install" || marker.schemaVersion !== 1 || marker.layout !== "releases-v1") {
+		if (marker.kind !== "pion-managed-install" || marker.schemaVersion !== 1 || marker.layout !== "releases-v1") {
 			throw new Error();
 		}
 	} catch {
@@ -86,7 +87,7 @@ function getActiveManagedInstallRoot(): string | undefined {
 }
 
 async function fetchInstallerArtifact(url: string, label: string): Promise<string> {
-	const response = await fetch(url, { headers: { "User-Agent": getPiUserAgent(VERSION) } });
+	const response = await fetch(url, { headers: { "User-Agent": getPionUserAgent(VERSION) } });
 	if (!response.ok) {
 		throw new Error(`Could not download managed installer ${label} from ${url}: HTTP ${response.status}`);
 	}
@@ -137,11 +138,13 @@ function verifyManagedRelease(releaseDir: string, expectedVersion: string): void
 	});
 	if (result.error || result.status !== 0) {
 		const reason = result.error?.message || result.stderr.trim() || `exit code ${result.status ?? "unknown"}`;
-		throw new Error(`Could not verify managed Pi ${expectedVersion}: ${reason}`);
+		throw new Error(`Could not verify managed ${APP_DISPLAY_NAME} ${expectedVersion}: ${reason}`);
 	}
 	const installedVersion = result.stdout.trim();
 	if (installedVersion !== expectedVersion) {
-		throw new Error(`Managed Pi smoke test returned version ${installedVersion}; expected ${expectedVersion}.`);
+		throw new Error(
+			`Managed ${APP_DISPLAY_NAME} smoke test returned version ${installedVersion}; expected ${expectedVersion}.`,
+		);
 	}
 }
 
@@ -220,7 +223,7 @@ async function runManagedSelfUpdate(managedRoot: string, version: string): Promi
 		releaseLock = await lockfile.lock(join(managedRoot, "update"), { realpath: false });
 	} catch (error: unknown) {
 		if (error instanceof Error && "code" in error && error.code === "ELOCKED") {
-			throw new Error("Another managed Pi update is already running.");
+			throw new Error(`Another managed ${APP_DISPLAY_NAME} update is already running.`);
 		}
 		throw error;
 	}
@@ -229,7 +232,7 @@ async function runManagedSelfUpdate(managedRoot: string, version: string): Promi
 	try {
 		cleanupManagedStaging(managedRoot);
 		const installerDownloadBase = (
-			process.env.PI_INSTALLER_DOWNLOAD_BASE?.trim() || DEFAULT_INSTALLER_DOWNLOAD_BASE
+			process.env.PION_INSTALLER_DOWNLOAD_BASE?.trim() || DEFAULT_INSTALLER_DOWNLOAD_BASE
 		).replace(/\/+$/, "");
 		const releaseUrl = `${installerDownloadBase}/v${encodeURIComponent(version)}`;
 		const stagingRoot = join(managedRoot, "staging");
@@ -390,14 +393,14 @@ Options:
   --extension <source>    Update one package only
   -a, --approve           Trust project-local files for this command
   -na, --no-approve       Ignore project-local files for this command
-  --force                 Reinstall pi even if the current version is latest
+  --force                 Reinstall ${APP_NAME} even if the current version is latest
 
 Short forms:
-  ${APP_NAME} update                Update pi only
-  ${APP_NAME} update --all          Update pi and all extensions
+  ${APP_NAME} update                Update ${APP_NAME} only
+  ${APP_NAME} update --all          Update ${APP_NAME} and all extensions
   ${APP_NAME} update --models       Refresh model catalogs only
   ${APP_NAME} update <source>       Update one package
-  ${APP_NAME} update pi             Update pi only (self works as alias to pi)
+  ${APP_NAME} update ${APP_NAME}          Update ${APP_NAME} only (self works as alias to ${APP_NAME})
 `);
 			return;
 
@@ -574,7 +577,7 @@ function parsePackageCommand(args: string[]): PackageCommandOptions | undefined 
 			}
 			updateTarget = { type: "extensions", source: extensionFlagSource };
 		} else if (source) {
-			const sourceIsSelf = source === "self" || source === "pi";
+			const sourceIsSelf = source === "self" || source === APP_NAME;
 			if (sourceIsSelf) {
 				updateTarget = extensionsFlag ? { type: "all" } : { type: "self" };
 			} else {
@@ -670,7 +673,7 @@ function printSelfUpdateUnavailable(
 	console.error(`error: ${APP_NAME} cannot self-update this installation.`);
 	console.error(getSelfUpdateUnavailableInstruction(PACKAGE_NAME, npmCommand, updatePackageTarget));
 	console.error(
-		`To make \`${APP_NAME} update\` run your own update command, set PI_SELF_UPDATE_COMMAND or the selfUpdateCommand setting.`,
+		`To make \`${APP_NAME} update\` run your own update command, set PION_SELF_UPDATE_COMMAND or the selfUpdateCommand setting.`,
 	);
 
 	const entrypoint = process.argv[1];
@@ -799,10 +802,10 @@ async function runConfiguredSelfUpdate(argv: string[], plan: SelfUpdatePlan): Pr
 	);
 }
 
-/** Version printed by `pi --version` as resolved from PATH, the pi the user runs next. */
+/** Version printed by `pion --version` as resolved from PATH, the pion the user runs next. */
 function readVersionOnPath(): string | undefined {
-	// PI_PACKAGE_DIR points at this installation and would make the new pi report the old version.
-	const { PI_PACKAGE_DIR: _, ...env } = process.env;
+	// PION_PACKAGE_DIR points at this installation and would make the new pion report the old version.
+	const { PION_PACKAGE_DIR: _, ...env } = process.env;
 	const result = spawnProcessSync(APP_NAME, ["--version"], {
 		encoding: "utf-8",
 		stdio: ["ignore", "pipe", "pipe"],

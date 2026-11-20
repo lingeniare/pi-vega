@@ -16,7 +16,7 @@
  * the chosen model. Requests outside the agent loop, such as compaction summaries, go to Luna.
  *
  * Requires TypeSafe credentials (TYPESAFE_API_KEY) and an OpenAI Codex login.
- * Usage: pi -e ./jev-router.ts --model jev/auto
+ * Usage: pion -e ./jev-router.ts --model jev/auto
  */
 
 import type { Message } from "@earendil-works/pi-ai";

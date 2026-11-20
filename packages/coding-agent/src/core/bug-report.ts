@@ -3,7 +3,7 @@ import type { AgentMessage, StreamFn, ThinkingLevel } from "@earendil-works/pi-a
 import { contentText, normalizeContext, type RetryPolicy, uuidv7 } from "@earendil-works/pi-ai";
 import type { Api, Model, Provider, SimpleStreamOptions } from "@earendil-works/pi-ai/compat";
 import { VERSION } from "../config.ts";
-import { getPiUserAgent } from "../utils/pi-user-agent.ts";
+import { getPionUserAgent } from "../utils/pion-user-agent.ts";
 import { writeZipArchive } from "../utils/zip.ts";
 import { completeSummarization, estimateTokens, getSummarizationFailure } from "./compaction/compaction.ts";
 import { serializeConversation } from "./compaction/utils.ts";
@@ -67,7 +67,7 @@ function collectEnvironment() {
 	const env = (name: string): string | null => process.env[name] || null;
 	return {
 		version: VERSION,
-		userAgent: getPiUserAgent(VERSION),
+		userAgent: getPionUserAgent(VERSION),
 		runtime: process.versions.bun ? `bun/${process.versions.bun}` : `node/${process.version}`,
 		platform: process.platform,
 		arch: process.arch,
@@ -84,8 +84,8 @@ function collectEnvironment() {
 			ci: Boolean(process.env.CI),
 		},
 		// Names help diagnose configuration; values never leave the machine.
-		piEnvironmentVariables: Object.keys(process.env)
-			.filter((name) => name.startsWith("PI_"))
+		pionEnvironmentVariables: Object.keys(process.env)
+			.filter((name) => name.startsWith("PION_") || name.startsWith("PI_"))
 			.sort(),
 	};
 }
@@ -276,7 +276,7 @@ export function writeBugReportArchive(bundle: BugReportBundle, filePath: string)
 }
 
 export function bugReportArchiveFileName(id: string): string {
-	return `pi-bug-report-${id}.zip`;
+	return `pion-bug-report-${id}.zip`;
 }
 
 const BUG_SUMMARY_SYSTEM_PROMPT = `You are helping a user file a bug report about pi, the coding agent they are talking to. You will be shown the conversation transcript. Write a report for the pi developers describing what the user was doing and what went wrong.

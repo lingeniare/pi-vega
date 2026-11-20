@@ -33,7 +33,7 @@ function createFixture(t, { importUndeclared = false } = {}) {
 			types: "./dist/index.d.ts",
 			exports: { ".": { types: "./dist/index.d.ts", import: "./dist/index.js" } },
 			files: ["dist"],
-			bin: { pi: "dist/bundle/cli.js" },
+			bin: { pion: "dist/bundle/cli.js" },
 		},
 		{
 			"dist/index.js": `${importUndeclared ? 'import "@earendil-works/undeclared";' : ""}

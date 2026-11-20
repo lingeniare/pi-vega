@@ -20,7 +20,7 @@ afterEach(() => {
 });
 
 function createTemporaryDirectory(): string {
-	const directory = mkdtempSync(join(tmpdir(), "pi-config-schema-test-"));
+	const directory = mkdtempSync(join(tmpdir(), "pion-config-schema-test-"));
 	temporaryDirectories.push(directory);
 	return directory;
 }
@@ -51,8 +51,8 @@ describe("generated configuration schemas", () => {
 		const accent = schema.properties.colors.properties.accent;
 		const colorValue = accent.$ref ? schema.$defs.ColorValue : accent;
 		expect(schema).toMatchObject({
-			title: "Pi Coding Agent Theme",
-			description: "Theme schema for Pi coding agent",
+			title: "Pion Coding Agent Theme",
+			description: "Theme schema for Pion coding agent",
 			properties: {
 				colors: {
 					description: expect.stringContaining("use compatible fallbacks"),

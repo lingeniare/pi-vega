@@ -60,7 +60,7 @@ describe("read line range display", () => {
 
 	beforeAll(() => {
 		initTheme("dark");
-		tempDir = mkdtempSync(join(tmpdir(), "pi-read-range-"));
+		tempDir = mkdtempSync(join(tmpdir(), "pion-read-range-"));
 	});
 
 	afterAll(() => {

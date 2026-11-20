@@ -17,19 +17,21 @@ describe("resolveModelSelection", () => {
 		expect(
 			resolveModelSelection(
 				{ provider: "anthropic", id: "claude-opus-4-6" },
-				{ PI_PROVIDER: "openai-codex", PI_MODEL: "gpt-5.6-sol" },
+				{ PION_PROVIDER: "openai-codex", PION_MODEL: "gpt-5.6-sol" },
 			),
 		).toEqual({ provider: "anthropic", id: "claude-opus-4-6" });
 	});
 
 	it("uses trimmed environment defaults", () => {
-		expect(resolveModelSelection(undefined, { PI_PROVIDER: " openai-codex ", PI_MODEL: " gpt-5.6-sol " })).toEqual({
+		expect(
+			resolveModelSelection(undefined, { PION_PROVIDER: " openai-codex ", PION_MODEL: " gpt-5.6-sol " }),
+		).toEqual({
 			provider: "openai-codex",
 			id: "gpt-5.6-sol",
 		});
 	});
 
-	it.each([{}, { PI_PROVIDER: "openai-codex" }, { PI_MODEL: "gpt-5.6-sol" }])(
+	it.each([{}, { PION_PROVIDER: "openai-codex" }, { PION_MODEL: "gpt-5.6-sol" }])(
 		"rejects incomplete model selection",
 		(environment) => {
 			expect(() => resolveModelSelection(undefined, environment)).toThrow("Select a harness model explicitly");
@@ -39,21 +41,21 @@ describe("resolveModelSelection", () => {
 
 describe("isolateProcessEnvironment", () => {
 	it("removes runner metadata and restores the process environment", () => {
-		vi.stubEnv("PI_EVAL_VARIANT", "with_docs");
-		vi.stubEnv("PI_EVAL_ARTIFACT_DIR", "/tmp/artifacts");
+		vi.stubEnv("PION_EVAL_VARIANT", "with_docs");
+		vi.stubEnv("PION_EVAL_ARTIFACT_DIR", "/tmp/artifacts");
 		const oldHome = process.env.HOME;
 		try {
 			const restore = applyIsolatedEnvironment("/tmp/eval-home", "/tmp/eval-agent");
 			try {
 				expect(homedir()).toBe("/tmp/eval-home");
-				expect(process.env.PI_CODING_AGENT_DIR).toBe("/tmp/eval-agent");
-				expect(process.env.PI_EVAL_VARIANT).toBeUndefined();
-				expect(process.env.PI_EVAL_ARTIFACT_DIR).toBeUndefined();
+				expect(process.env.PION_CODING_AGENT_DIR).toBe("/tmp/eval-agent");
+				expect(process.env.PION_EVAL_VARIANT).toBeUndefined();
+				expect(process.env.PION_EVAL_ARTIFACT_DIR).toBeUndefined();
 			} finally {
 				restore();
 			}
 			expect(process.env.HOME).toBe(oldHome);
-			expect(process.env.PI_EVAL_VARIANT).toBe("with_docs");
+			expect(process.env.PION_EVAL_VARIANT).toBe("with_docs");
 		} finally {
 			vi.unstubAllEnvs();
 		}
@@ -66,7 +68,7 @@ describe("documentation variant", () => {
 	});
 
 	it.each([undefined, "", "other"])("rejects invalid variant %s", (variant) => {
-		expect(() => resolveDocumentationVariant(variant)).toThrow("PI_EVAL_VARIANT");
+		expect(() => resolveDocumentationVariant(variant)).toThrow("PION_EVAL_VARIANT");
 	});
 
 	it("strips only the documentation routing section from the default Pi prompt", () => {

@@ -269,7 +269,7 @@ describe("AgentSession MCP integration", () => {
 		await first.harness.session.prompt("second");
 		expect(declaredToolNames(first.harness)).toContain("mcp__docs__search");
 
-		// Like `pi --tools read,codemode -c` followed by /tree.
+		// Like `pion --tools read,codemode -c` followed by /tree.
 		const second = await setup("direct", undefined, {
 			allowedToolNames: ["read", "codemode"],
 			sessionManager: first.harness.sessionManager,

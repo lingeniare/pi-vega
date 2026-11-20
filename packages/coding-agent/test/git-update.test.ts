@@ -307,7 +307,7 @@ describe("DefaultPackageManager git update", () => {
 			mkdirSync(join(cachedDir, "pi-extensions"), { recursive: true });
 			writeFileSync(
 				join(cachedDir, "package.json"),
-				JSON.stringify({ pi: { extensions: ["./pi-extensions"] } }, null, 2),
+				JSON.stringify({ pion: { extensions: ["./pi-extensions"] } }, null, 2),
 			);
 			writeFileSync(extensionFile, "// stale");
 

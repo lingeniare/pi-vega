@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * Build the vega.codes release site for the pi fork.
+ * Build the vega.codes release site for the pion fork.
  *
  * Produces a static `dist-site/` tree to deploy on vega.codes (nginx):
  *
@@ -26,7 +26,7 @@
  *
  * Usage:
  *   npm run build                       # required first (dist/ must exist)
- *   node scripts/build-vega-release.mjs [--out .artifacts/vega-site] [--base-url https://vega.codes/pi]
+ *   node scripts/build-vega-release.mjs [--out .artifacts/vega-site] [--base-url https://vega.codes/pion]
  *   node scripts/build-vega-release.mjs --layout github [--repo lingeniare/pi-vega] [--tag vX.Y.Z]
  *
  * Deploy site layout: rsync -r <out>/ user@host:/var/www/vega.codes/
@@ -56,7 +56,7 @@ const installDir = join(repoRoot, "install");
 const INTERNAL_SCOPE = "@earendil-works/";
 
 function parseArgs(argv) {
-	const options = { out: undefined, baseUrl: "https://vega.codes/pi", layout: "site", repo: "lingeniare/pi-vega", tag: undefined };
+	const options = { out: undefined, baseUrl: "https://vega.codes/pion", layout: "site", repo: "lingeniare/pi-vega", tag: undefined };
 	for (let index = 0; index < argv.length; index += 1) {
 		const arg = argv[index];
 		if (arg === "--out") {
@@ -189,7 +189,7 @@ const depUrl =
 		? (name) => `${downloadBase}/${tarballBasename(name, version)}`
 		: (name) => `${options.baseUrl}/releases/${version}/${tarballBasename(name, version)}`;
 const outDir = options.out ?? join(repoRoot, ".artifacts", layout === "github" ? "github-release" : "vega-site");
-const siteRoot = join(outDir, "pi");
+const siteRoot = join(outDir, "pion");
 const releasesDir = layout === "github" ? outDir : join(siteRoot, "releases", version);
 const latestDir = join(siteRoot, "releases", "latest");
 const apiDir = join(siteRoot, "api");
@@ -329,7 +329,7 @@ if (layout === "github") {
 	console.log(`  ${tarballs.size} tarballs, installer scripts and managed manifests`);
 	console.log(`\nPublish with e.g.:\n  gh release create ${tag} --repo ${options.repo} ${relative(repoRoot, outDir)}/*`);
 } else {
-	console.log(`\nBuilt vega.codes release site v${version} at ${relative(repoRoot, outDir)}/pi`);
+	console.log(`\nBuilt vega.codes release site v${version} at ${relative(repoRoot, outDir)}/pion`);
 	console.log(`  ${tarballs.size} tarballs, install endpoints under pi/api`);
 	console.log(`\nDeploy with e.g.:\n  rsync -r ${relative(repoRoot, outDir)}/ user@vega.codes:/var/www/vega.codes/`);
 	console.log("Serve extensionless files pi/api/latest-version and pi/api/installer/releases/latest as-is (JSON content).");

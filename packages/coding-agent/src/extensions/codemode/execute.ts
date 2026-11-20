@@ -57,9 +57,9 @@ const CODEMODE_MEMORY_LIMIT_BYTES = 256 * 1024 * 1024;
 // Shared across calls and sessions. Allow one replacement while a cancelled worker is still exiting.
 const DEFAULT_MAX_CODEMODE_WORKERS = 2;
 
-/** `PI_CODEMODE_MAX_WORKERS` if it is a positive integer. Read per call so SDK hosts can set it at runtime. */
+/** `PION_CODEMODE_MAX_WORKERS` if it is a positive integer. Read per call so SDK hosts can set it at runtime. */
 function maxCodemodeWorkers(): number {
-	const value = Number(process.env.PI_CODEMODE_MAX_WORKERS);
+	const value = Number(process.env.PION_CODEMODE_MAX_WORKERS);
 	return Number.isInteger(value) && value > 0 ? value : DEFAULT_MAX_CODEMODE_WORKERS;
 }
 /**

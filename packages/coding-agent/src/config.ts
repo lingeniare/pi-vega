@@ -25,8 +25,8 @@ export const isBunBinary =
 export const isBunRuntime = !!process.versions.bun;
 
 /** Detect the esbuild-bundled Node.js distribution. */
-declare const PI_BUNDLED_NODE: boolean;
-export const isBundledNode = typeof PI_BUNDLED_NODE !== "undefined" && PI_BUNDLED_NODE;
+declare const PION_BUNDLED_NODE: boolean;
+export const isBundledNode = typeof PION_BUNDLED_NODE !== "undefined" && PION_BUNDLED_NODE;
 
 // =============================================================================
 // Install Method Detection
@@ -335,11 +335,11 @@ export function getSelfUpdateCommand(
 }
 
 /**
- * The self-update command configured by the user: `PI_SELF_UPDATE_COMMAND` (whitespace-separated
+ * The self-update command configured by the user: `PION_SELF_UPDATE_COMMAND` (whitespace-separated
  * argv, no quoting), else the global `selfUpdateCommand` setting. Overrides install-method detection.
  */
 export function getConfiguredSelfUpdateArgv(setting: string[] | undefined): string[] | undefined {
-	const fromEnv = process.env.PI_SELF_UPDATE_COMMAND?.trim().split(/\s+/).filter(Boolean);
+	const fromEnv = process.env.PION_SELF_UPDATE_COMMAND?.trim().split(/\s+/).filter(Boolean);
 	if (fromEnv?.length) return fromEnv;
 	return setting?.length ? setting : undefined;
 }
@@ -417,7 +417,7 @@ export function findNodePackageDir(startDir: string): string {
 
 export function getPackageDir(): string {
 	// Allow override via environment variable (useful for Nix/Guix where store paths tokenize poorly)
-	const envDir = process.env.PI_PACKAGE_DIR;
+	const envDir = process.env.PION_PACKAGE_DIR;
 	if (envDir) {
 		return normalizePath(envDir);
 	}
@@ -554,7 +554,7 @@ export function getCodemodeWorkerSpecifier(): string | URL | undefined {
 export type InstallChange = { kind: "updated"; version: string } | { kind: "removed" };
 
 /**
- * Detect that the package this process runs from changed on disk, for example after `pi update`
+ * Detect that the package this process runs from changed on disk, for example after `pion update`
  * in another terminal. Code loaded on demand can then be missing or from another version.
  *
  * Checks the package.json read at startup. Resolving it again would walk up past a deleted install
@@ -603,12 +603,18 @@ const piConfigName: string | undefined = pkg.piConfig?.name;
 export const PACKAGE_NAME: string = pkg.name || "@earendil-works/pi-coding-agent";
 export const APP_NAME: string = piConfigName || "pi";
 export const APP_TITLE: string = piConfigName ? APP_NAME : "π";
+/** Brand for prose and titles: "Pion" in this fork, "Pi" upstream. */
+export const APP_DISPLAY_NAME: string = piConfigName
+	? piConfigName.charAt(0).toUpperCase() + piConfigName.slice(1)
+	: "Pi";
 export const CONFIG_DIR_NAME: string = pkg.piConfig?.configDir || ".pi";
 export const VERSION: string = pkg.version || "0.0.0";
 
 // e.g., PI_CODING_AGENT_DIR or TAU_CODING_AGENT_DIR
 export const ENV_AGENT_DIR = `${APP_NAME.toUpperCase()}_CODING_AGENT_DIR`;
 export const ENV_SESSION_DIR = `${APP_NAME.toUpperCase()}_CODING_AGENT_SESSION_DIR`;
+/** Startup marker env var telling child processes they run inside the agent (PION_CODING_AGENT here, PI_CODING_AGENT upstream). */
+export const ENV_CODING_AGENT = `${APP_NAME.toUpperCase()}_CODING_AGENT`;
 
 export function expandTildePath(path: string): string {
 	return normalizePath(path);
@@ -618,15 +624,15 @@ const DEFAULT_SHARE_VIEWER_URL = "https://pi.dev/session/";
 
 /** Get the share viewer URL for a gist ID. */
 export function getShareViewerUrl(gistId: string): string {
-	const baseUrl = process.env.PI_SHARE_VIEWER_URL || DEFAULT_SHARE_VIEWER_URL;
+	const baseUrl = process.env.PION_SHARE_VIEWER_URL || DEFAULT_SHARE_VIEWER_URL;
 	return `${baseUrl}#${gistId}`;
 }
 
 // =============================================================================
-// User Config Paths (~/.pi/agent/*)
+// User Config Paths (~/.pion/agent/*)
 // =============================================================================
 
-/** Get the agent config directory (e.g., ~/.pi/agent/) */
+/** Get the agent config directory (e.g., ~/.pion/agent/) */
 export function getAgentDir(): string {
 	const envDir = process.env[ENV_AGENT_DIR];
 	if (envDir) {

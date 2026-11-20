@@ -30,8 +30,8 @@ describe("clipboard commands", () => {
 			clearInterval(timer);
 		}
 	});
-	// #11179: clipboard daemons must not share pi's process group, or Ctrl+Z suspend stops them.
-	test.skipIf(process.platform === "win32")("runs commands outside pi's process group", async () => {
+	// #11179: clipboard daemons must not share pion's process group, or Ctrl+Z suspend stops them.
+	test.skipIf(process.platform === "win32")("runs commands outside pion's process group", async () => {
 		const childPgid = (await runClipboardCommand("sh", ["-c", "ps -o pgid= -p $$"]))?.toString("utf8").trim();
 		const ownPgid = (await runClipboardCommand("ps", ["-o", "pgid=", "-p", String(process.pid)]))
 			?.toString("utf8")

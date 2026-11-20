@@ -1,6 +1,6 @@
 import { compare, valid } from "semver";
 import { fetchWithRetry } from "./management-http.ts";
-import { getPiUserAgent } from "./pi-user-agent.ts";
+import { getPionUserAgent } from "./pion-user-agent.ts";
 
 const DEFAULT_LATEST_VERSION_URL =
 	"https://github.com/lingeniare/pi-vega/releases/latest/download/installer-release.json";
@@ -55,14 +55,14 @@ export async function getLatestPiRelease(
 	currentVersion: string,
 	options: { timeoutMs?: number; retry?: boolean } = {},
 ): Promise<LatestPiRelease | undefined> {
-	if (process.env.PI_OFFLINE) return undefined;
+	if (process.env.PION_OFFLINE) return undefined;
 
-	const latestVersionUrl = process.env.PI_LATEST_VERSION_URL?.trim() || DEFAULT_LATEST_VERSION_URL;
+	const latestVersionUrl = process.env.PION_LATEST_VERSION_URL?.trim() || DEFAULT_LATEST_VERSION_URL;
 	const response = await fetchWithRetry(
 		latestVersionUrl,
 		{
 			headers: {
-				"User-Agent": getPiUserAgent(currentVersion),
+				"User-Agent": getPionUserAgent(currentVersion),
 				accept: "application/json",
 			},
 		},
@@ -103,7 +103,7 @@ export async function getLatestPiVersion(
 }
 
 export async function checkForNewPiVersion(currentVersion: string): Promise<LatestPiRelease | undefined> {
-	if (process.env.PI_SKIP_VERSION_CHECK) return undefined;
+	if (process.env.PION_SKIP_VERSION_CHECK) return undefined;
 
 	try {
 		const latestRelease = await getLatestPiRelease(currentVersion);

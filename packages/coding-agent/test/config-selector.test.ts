@@ -19,7 +19,7 @@ describe("config selector search", () => {
 
 	beforeEach(() => {
 		setKeybindings(new KeybindingsManager());
-		tempDir = mkdtempSync(join(tmpdir(), "pi-config-selector-"));
+		tempDir = mkdtempSync(join(tmpdir(), "pion-config-selector-"));
 	});
 
 	afterEach(() => {

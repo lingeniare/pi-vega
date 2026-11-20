@@ -1,5 +1,5 @@
 /**
- * Runs the official MCP client conformance suite against pi (client.ts) and compares every check with
+ * Runs the official MCP client conformance suite against pion (client.ts) and compares every check with
  * the committed baseline (baseline.json). Fails when a check that passed in the baseline no longer
  * passes, or when a check fails that the baseline does not list. Known failures stay visible in the
  * output. See README.md.
@@ -23,7 +23,7 @@ import { parseArgs } from "node:util";
 
 /** The pinned upstream suite. Bumping it requires reviewing and regenerating the baseline. */
 const CONFORMANCE_PACKAGE = "@modelcontextprotocol/conformance@0.2.0-alpha.11";
-/** Protocol versions pi negotiates. 2026-07-28 is a different (stateless) protocol pi does not speak. */
+/** Protocol versions pion negotiates. 2026-07-28 is a different (stateless) protocol pion does not speak. */
 const MODES = ["2025-03-26", "2025-06-18", "2025-11-25"] as const;
 const SCENARIO_TIMEOUT_MS = 30_000;
 /** Checks that are part of the suite's HTTP trace, not assertions. */
@@ -159,7 +159,7 @@ async function runScenario(
 		],
 		{
 			cwd: workDir,
-			env: { ...conformanceEnv(), PI_MCP_CONFORMANCE_REPORT: reportPath },
+			env: { ...conformanceEnv(), PION_MCP_CONFORMANCE_REPORT: reportPath },
 			timeoutMs: SCENARIO_TIMEOUT_MS + 30_000,
 		},
 	);
@@ -178,7 +178,7 @@ async function runScenario(
 		const message = String(check.errorMessage ?? check.description ?? "");
 		record(result, id, status === "SUCCESS" ? "pass" : "fail", message);
 	}
-	// Whether pi completed the scenario. Some scenarios expect the client to give up, so this is
+	// Whether pion completed the scenario. Some scenarios expect the client to give up, so this is
 	// baselined like any other check.
 	let client: { success?: unknown; error?: unknown } = { error: "client.ts wrote no report" };
 	if (existsSync(reportPath)) client = JSON.parse(readFileSync(reportPath, "utf8")) as typeof client;

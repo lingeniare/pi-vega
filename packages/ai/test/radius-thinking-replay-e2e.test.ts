@@ -5,7 +5,7 @@
  * should become part of the model's context. Through Radius they are silently dropped: the model never sees its
  * earlier reasoning, and the provider reports no input tokens for it.
  *
- * How it was found: a Pi Mobile session on radius/claude-opus-5-5 reached ~996K context tokens, but its compaction
+ * How it was found: a Pion Mobile session on radius/claude-opus-5-5 reached ~996K context tokens, but its compaction
  * request was 1.38M tokens ("prompt is too long"). Compaction serializes all assistant thinking as text, while the
  * live context had been carrying none of it.
  *
@@ -25,7 +25,7 @@
  *   radius                          with 582, without 582 (+0 of 463 output tokens)
  *   radius, level "high" injected   with 997, without 582
  *
- * Credentials: RADIUS_API_KEY or a `radius` entry in ~/.pi/agent/auth.json; ANTHROPIC_API_KEY, ANTHROPIC_OAUTH_TOKEN or
+ * Credentials: RADIUS_API_KEY or a `radius` entry in ~/.pion/agent/auth.json; ANTHROPIC_API_KEY, ANTHROPIC_OAUTH_TOKEN or
  * an `anthropic` entry for the control. Each test makes three paid requests.
  */
 import { describe, expect, it } from "vitest";

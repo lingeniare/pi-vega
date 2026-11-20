@@ -5,7 +5,7 @@ import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
 const packageRoot = resolve(dirname(fileURLToPath(import.meta.url)), "..");
-const variant = process.env.PI_EVAL_VARIANT;
+const variant = process.env.PION_EVAL_VARIANT;
 
 function parseId(name: string): number {
 	const value = Number(process.env[name]);
@@ -13,8 +13,8 @@ function parseId(name: string): number {
 	return value;
 }
 
-const sandboxUid = parseId("PI_EVAL_SANDBOX_UID");
-const sandboxGid = parseId("PI_EVAL_SANDBOX_GID");
+const sandboxUid = parseId("PION_EVAL_SANDBOX_UID");
+const sandboxGid = parseId("PION_EVAL_SANDBOX_GID");
 
 function assertDirectoryEntries(path: string, expectedEntries: readonly string[]): void {
 	const actual = readdirSync(path).sort();
@@ -51,7 +51,7 @@ function assertWorkspace(): void {
 		}
 		return;
 	}
-	if (variant !== "with_docs") throw new Error("Eval image has no valid PI_EVAL_VARIANT.");
+	if (variant !== "with_docs") throw new Error("Eval image has no valid PION_EVAL_VARIANT.");
 	for (const path of [
 		join(codingAgentDir, "README.md"),
 		join(codingAgentDir, "CHANGELOG.md"),
@@ -104,16 +104,16 @@ if (codingAgentEntry !== "/repo/node_modules/@earendil-works/pi-coding-agent/dis
 	throw new Error(`Eval does not resolve pi-coding-agent from dist: ${codingAgentEntry}`);
 }
 
-const agentDir = "/tmp/pi-eval-host-agent";
+const agentDir = "/tmp/pion-eval-host-agent";
 mkdirSync(agentDir, { recursive: true });
-const authSource = "/run/pi-eval-secrets/auth.json";
+const authSource = "/run/pion-eval-secrets/auth.json";
 if (existsSync(authSource)) copyFileSync(authSource, join(agentDir, "auth.json"));
 chownTree(agentDir, sandboxUid, sandboxGid);
 chownTree("/artifacts", sandboxUid, sandboxGid);
-process.env.HOME = "/tmp/pi-eval-bootstrap";
+process.env.HOME = "/tmp/pion-eval-bootstrap";
 process.env.USERPROFILE = process.env.HOME;
-process.env.PI_CODING_AGENT_DIR = agentDir;
-process.env.PI_EVAL_CONTAINER = "1";
+process.env.PION_CODING_AGENT_DIR = agentDir;
+process.env.PION_EVAL_CONTAINER = "1";
 process.umask(0o022);
 
 const require = createRequire(import.meta.url);
@@ -144,9 +144,9 @@ const commandArgs = discover
 const result = spawnSync(process.execPath, commandArgs, { cwd: packageRoot, stdio: "inherit", env: process.env });
 if (result.error) throw result.error;
 
-const artifactUid = process.env.PI_EVAL_ARTIFACT_UID;
-const artifactGid = process.env.PI_EVAL_ARTIFACT_GID;
+const artifactUid = process.env.PION_EVAL_ARTIFACT_UID;
+const artifactGid = process.env.PION_EVAL_ARTIFACT_GID;
 if (artifactUid !== undefined && artifactGid !== undefined) {
-	chownTree("/artifacts", parseId("PI_EVAL_ARTIFACT_UID"), parseId("PI_EVAL_ARTIFACT_GID"));
+	chownTree("/artifacts", parseId("PION_EVAL_ARTIFACT_UID"), parseId("PION_EVAL_ARTIFACT_GID"));
 }
 process.exit(result.status ?? 1);

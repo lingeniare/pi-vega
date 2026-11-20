@@ -5,13 +5,13 @@ description: Work on GitHub issues and pull requests of this repo. Use when aske
 
 # Working on GitHub issues and PRs
 
-The repo's prompt templates in `.pi/prompts/` (two directories above this skill) define the workflow. Read the matching template in full and follow it. Where a template says `$ARGUMENTS` or `$@`, substitute the issue or PR number or URL from the request, and any extra instructions the user gave.
+The repo's prompt templates in `.pion/prompts/` (two directories above this skill) define the workflow. Read the matching template in full and follow it. Where a template says `$ARGUMENTS` or `$@`, substitute the issue or PR number or URL from the request, and any extra instructions the user gave.
 
 | Request | Template |
 |---|---|
-| Investigate, analyze, or fix an issue | `.pi/prompts/is.md` |
-| Review a pull request | `.pi/prompts/pr.md` |
-| Wrap up issue or PR work: changelog, final comment, commit, push, close | `.pi/prompts/wr.md` |
+| Investigate, analyze, or fix an issue | `.pion/prompts/is.md` |
+| Review a pull request | `.pion/prompts/pr.md` |
+| Wrap up issue or PR work: changelog, final comment, commit, push, close | `.pion/prompts/wr.md` |
 
 Rules:
 

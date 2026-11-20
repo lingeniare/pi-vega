@@ -126,10 +126,10 @@ jobs:
 
       - name: Smoke-test
         run: |
-          ./result/bin/pi --version
-          ./result/bin/pi --help > /dev/null
+          ./result/bin/pion --version
+          ./result/bin/pion --help > /dev/null
           if [[ "${GITHUB_REF_TYPE}" == "tag" ]]; then
-            test "$(./result/bin/pi --version)" = "${GITHUB_REF_NAME#v}"
+            test "$(./result/bin/pion --version)" = "${GITHUB_REF_NAME#v}"
           fi
 
   update-stable:

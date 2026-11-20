@@ -913,8 +913,8 @@ after`,
 \[
 A=
 \begin{pmatrix}
-\pi & 0\\
-0 & \frac{1}{\pi}
+\pion & 0\\
+0 & \frac{1}{\pion}
 \end{pmatrix}.
 \]`,
 				0,

@@ -63,7 +63,7 @@ describe("DefaultResourceLoader theme color mode", () => {
 	])(
 		"uses the $setting setting over a $environment environment",
 		async ({ environmentOverride, setting, expected }) => {
-			vi.stubEnv("PI_TRUE_COLOR", environmentOverride);
+			vi.stubEnv("PION_TRUE_COLOR", environmentOverride);
 			setCapabilityOverrides({});
 			resetCapabilitiesCache();
 
@@ -85,7 +85,7 @@ describe("DefaultResourceLoader theme color mode", () => {
 	);
 
 	it("returns to automatic detection after an explicit setting is removed", async () => {
-		vi.stubEnv("PI_TRUE_COLOR", "1");
+		vi.stubEnv("PION_TRUE_COLOR", "1");
 		setCapabilityOverrides({});
 		resetCapabilitiesCache();
 

@@ -38,7 +38,7 @@ import type { Readable } from "node:stream";
 import ignore from "ignore";
 import { minimatch } from "minimatch";
 import { gt, maxSatisfying, rcompare, satisfies, valid, validRange } from "semver";
-import { CONFIG_DIR_NAME } from "../config.ts";
+import { APP_NAME, CONFIG_DIR_NAME } from "../config.ts";
 import { spawnProcess, spawnProcessSync, waitForChildProcess } from "../utils/child-process.ts";
 import { type GitSource, parseGitUrl } from "../utils/git.ts";
 import {
@@ -65,8 +65,7 @@ const CAPTURED_OUTPUT_TAIL_CHARS = 8000;
 const GIT_PROMPT_FAILURE =
 	/terminal prompts disabled|could not read (Username|Password)|Permission denied \(publickey|Host key verification failed|passphrase/i;
 
-const GIT_CREDENTIALS_HINT =
-	"git cannot ask for a password or passphrase while pi runs. Set up a git credential helper or an ssh agent, or install the package once from the shell with `pi install <source>`.";
+const GIT_CREDENTIALS_HINT = `git cannot ask for a password or passphrase while ${APP_NAME} runs. Set up a git credential helper or an ssh agent, or install the package once from the shell with \`${APP_NAME} install <source>\`.`;
 
 /** Make git and ssh fail instead of prompting on the terminal, which a captured command cannot answer. */
 function getNonInteractiveGitEnv(env: NodeJS.ProcessEnv): NodeJS.ProcessEnv {
@@ -80,9 +79,9 @@ function getNonInteractiveGitEnv(env: NodeJS.ProcessEnv): NodeJS.ProcessEnv {
 const UPDATE_CHECK_CONCURRENCY = 4;
 const GIT_UPDATE_CONCURRENCY = 4;
 
-/** Whether PI_OFFLINE is set; package installs and updates then skip all network access. */
+/** Whether PION_OFFLINE is set; package installs and updates then skip all network access. */
 export function isOfflineModeEnabled(): boolean {
-	const value = process.env.PI_OFFLINE;
+	const value = process.env.PION_OFFLINE;
 	if (!value) return false;
 	return value === "1" || value.toLowerCase() === "true" || value.toLowerCase() === "yes";
 }
@@ -2200,7 +2199,7 @@ export class DefaultPackageManager implements PackageManager {
 				type: "progress",
 				action: "update",
 				source: targetDir,
-				message: `Could not remove all untracked files in ${targetDir} (${reason}). Files may be in use by another pi session; close it and run the update again.`,
+				message: `Could not remove all untracked files in ${targetDir} (${reason}). Files may be in use by another ${APP_NAME} session; close it and run the update again.`,
 			});
 		}
 
@@ -2770,7 +2769,7 @@ export class DefaultPackageManager implements PackageManager {
 			);
 		}
 
-		// User extensions from ~/.pi/agent/
+		// User extensions from ~/.pion/agent/
 		addResources(
 			"extensions",
 			collectAutoExtensionEntries(userDirs.extensions),
@@ -2779,7 +2778,7 @@ export class DefaultPackageManager implements PackageManager {
 			globalBaseDir,
 		);
 
-		// User skills from ~/.pi/agent/
+		// User skills from ~/.pion/agent/
 		addResources(
 			"skills",
 			collectAutoSkillEntries(userDirs.skills, "pi"),

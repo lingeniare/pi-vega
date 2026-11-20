@@ -12,7 +12,7 @@ describe("formatProgramStatus", () => {
 	it("encodes state, app, kind, and a base64 message", () => {
 		assert.equal(
 			formatProgramStatus({ state: "blocked", app: "pi", kind: "permission", message: "Allow bash?" }),
-			`\x1b]7501;state=blocked:app=pi:kind=permission:msg=${Buffer.from("Allow bash?").toString("base64")}\x1b\\`,
+			`\x1b]7501;state=blocked:app=pion:kind=permission:msg=${Buffer.from("Allow bash?").toString("base64")}\x1b\\`,
 		);
 		assert.equal(formatProgramStatus({ state: "clear" }), "\x1b]7501;state=clear\x1b\\");
 	});

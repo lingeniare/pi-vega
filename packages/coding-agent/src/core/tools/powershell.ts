@@ -26,7 +26,7 @@ const WINDOWS_POWERSHELL_EXIT_SUFFIX =
 
 export const powershellToolSystemPromptContribution = {
 	snippet: "Execute PowerShell commands",
-	guidelines: ["You can inspect PI_* environment variables for current model and session details."],
+	guidelines: ["You can inspect PION_* environment variables for current model and session details."],
 } as const;
 
 export type PowerShellOperations = BashOperations;
@@ -63,7 +63,7 @@ const powershellToolConfig: ShellToolConfig = {
 	prompt: "PS>",
 	promptSnippet: powershellToolSystemPromptContribution.snippet,
 	promptGuidelines: powershellToolSystemPromptContribution.guidelines,
-	tempFilePrefix: "pi-powershell",
+	tempFilePrefix: "pion-powershell",
 };
 
 export function createPowerShellToolDefinition(

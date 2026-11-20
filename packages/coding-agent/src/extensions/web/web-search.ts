@@ -98,7 +98,7 @@ export function createWebSearchToolDefinition(): ToolDefinition<typeof webSearch
 			if (!Number.isInteger(maxResults) || maxResults < 1 || maxResults > 25) {
 				throw new Error("max_results must be an integer between 1 and 25");
 			}
-			const model = process.env.PI_WEB_SEARCH_MODEL ?? DEFAULT_SEARCH_MODEL;
+			const model = process.env.PION_WEB_SEARCH_MODEL ?? DEFAULT_SEARCH_MODEL;
 			const timeout = AbortSignal.timeout(SEARCH_TIMEOUT_MS);
 			const fetchSignal = signal ? AbortSignal.any([signal, timeout]) : timeout;
 			const response = await fetch(`${provider.baseUrl}/chat/completions`, {

@@ -81,7 +81,7 @@ describe("getNewEntries", () => {
 describe("parseChangelog", () => {
 	// Runs in the TUI (startup notes, /changelog), where a direct write draws over the screen (#11264).
 	test("returns no entries for an unreadable changelog without printing", () => {
-		const dir = mkdtempSync(join(tmpdir(), "pi-changelog-"));
+		const dir = mkdtempSync(join(tmpdir(), "pion-changelog-"));
 		const consoleError = vi.spyOn(console, "error").mockImplementation(() => {});
 		try {
 			// A directory exists but cannot be read as a file (EISDIR).

@@ -35,7 +35,7 @@ describe("HTML export CJK emphasis", () => {
 
 	beforeAll(async () => {
 		initTheme("dark");
-		tempDir = mkdtempSync(join(tmpdir(), "pi-export-cjk-"));
+		tempDir = mkdtempSync(join(tmpdir(), "pion-export-cjk-"));
 		const header = {
 			type: "session",
 			version: CURRENT_SESSION_VERSION,

@@ -1,6 +1,6 @@
 # MCP client conformance
 
-Runs the official [MCP conformance suite](https://github.com/modelcontextprotocol/conformance) against pi's MCP client and compares the result with a committed baseline.
+Runs the official [MCP conformance suite](https://github.com/modelcontextprotocol/conformance) against pion's MCP client and compares the result with a committed baseline.
 
 ```bash
 npm run test:mcp-conformance
@@ -10,9 +10,9 @@ CI runs it in the `mcp-conformance` job of `.github/workflows/ci.yml`. Requires 
 
 ## How it works
 
-For every protocol version pi negotiates (`2025-03-26`, `2025-06-18`, `2025-11-25`), `run.ts` lists the suite's client scenarios and runs them one at a time. The suite starts a scenario server and runs `client.ts` against it.
+For every protocol version pion negotiates (`2025-03-26`, `2025-06-18`, `2025-11-25`), `run.ts` lists the suite's client scenarios and runs them one at a time. The suite starts a scenario server and runs `client.ts` against it.
 
-`client.ts` uses the code pi runs for an HTTP server in `mcp.json`: `McpServerConnection` connects and calls tools, and `signInMcpServer` runs the OAuth sign-in that `/mcp` starts. A simulated browser fetches the authorization URL and delivers the redirect to pi's loopback callback server. When the server asks for sign-in again (for example for more scope), the simulated user signs in again, up to three times.
+`client.ts` uses the code pion runs for an HTTP server in `mcp.json`: `McpServerConnection` connects and calls tools, and `signInMcpServer` runs the OAuth sign-in that `/mcp` starts. A simulated browser fetches the authorization URL and delivers the redirect to pion's loopback callback server. When the server asks for sign-in again (for example for more scope), the simulated user signs in again, up to three times.
 
 Every check the suite reports is compared with `baseline.json`. The extra `pi-client` check records whether `client.ts` completed the scenario. Some scenarios expect the client to give up (`auth/scope-retry-limit`), so it is baselined like the others.
 
@@ -38,8 +38,8 @@ node packages/coding-agent/test/mcp-conformance/run.ts --update-baseline
 
 ## Known failures
 
-- `elicitation-sep1034-client-defaults`: pi does not support elicitation.
-- `auth/basic-cimd`: pi uses its Client ID Metadata Document on pi.dev, not the suite's `https://conformance-test.local/client-metadata.json`.
+- `elicitation-sep1034-client-defaults`: pion does not support elicitation.
+- `auth/basic-cimd`: pion uses its Client ID Metadata Document on pi.dev, not the suite's `https://conformance-test.local/client-metadata.json`.
 - `auth/scope-retry-limit`: `pi-client` fails by design; the server never accepts the granted scope.
 
-2026-07-28 is not covered: it is a stateless protocol pi does not implement.
+2026-07-28 is not covered: it is a stateless protocol pion does not implement.

@@ -3,7 +3,7 @@
 </p>
 <p align="center">
   <a href="https://vega.codes">
-    <img alt="Pi + VEGA" src="cover.webp">
+    <img alt="pion + VEGA" src="cover.webp">
   </a>
 </p>
 <p align="center">
@@ -14,7 +14,7 @@
   <a href="LICENSE"><img alt="MIT" src="https://img.shields.io/badge/license-MIT-22C55E?style=flat-square" /></a>
 </p>
 
-# Pi + VEGA
+# pion + VEGA
 
 Форк [Pi](https://github.com/earendil-works/pi) — минималистичного расширяемого AI-агента для терминала. Тот же Pi, только проще для разработчиков из России.
 
@@ -28,7 +28,7 @@
 
 ## Установка
 
-Инсталлер (managed-установка с пином зависимостей и `pi update`):
+Инсталлер (managed-установка с пином зависимостей и `pion update`):
 
 ```bash
 curl -fsSL https://github.com/lingeniare/pi-vega/releases/latest/download/install.sh | sh
@@ -45,7 +45,7 @@ npm install -g --ignore-scripts https://github.com/lingeniare/pi-vega/releases/l
 # или: pnpm add -g / bun add -g — тот же URL
 ```
 
-Релизы и все файлы установки лежат в [GitHub Releases](https://github.com/lingeniare/pi-vega/releases). Обновление — `pi update` (managed-установка) или повторный запуск инсталлера.
+Релизы и все файлы установки лежат в [GitHub Releases](https://github.com/lingeniare/pi-vega/releases). Обновление — `pion update` (managed-установка) или повторный запуск инсталлера.
 
 Из исходников для разработки:
 
@@ -59,14 +59,14 @@ npm run build
 Запуск из исходников:
 
 ```bash
-./pi-test.sh    # Linux / macOS
-pi-test.bat     # Windows
+./pion-test.sh    # Linux / macOS
+pion-test.bat     # Windows
 ```
 
 Залогиньтесь в VEGA и выберите модель:
 
 ```bash
-pi
+pion
 /login   # → Sign in with VEGA → введите код на api.vega.chat/device
 /model   # → выберите модель vega/<id>
 ```
@@ -74,7 +74,7 @@ pi
 Ключ можно и вставить вручную (`/login` → API key → `sk-apivega-...`) или задать env `VEGA_API_KEY`.
 
 <p>
-  <a href="https://pi.dev/docs/latest/settings#network-and-retries"><img alt="Документация Pi" src="https://img.shields.io/badge/Pi-%D0%94%D0%BE%D0%BA%D1%83%D0%BC%D0%B5%D0%BD%D1%82%D0%B0%D1%86%D0%B8%D1%8F-1F2937?style=for-the-badge" /></a>
+  <a href="packages/coding-agent/docs"><img alt="Документация" src="https://img.shields.io/badge/Pion-%D0%94%D0%BE%D0%BA%D1%83%D0%BC%D0%B5%D0%BD%D1%82%D0%B0%D1%86%D0%B8%D1%8F-1F2937?style=for-the-badge" /></a>
   <a href="https://vega.codes"><img alt="vega.codes" src="https://img.shields.io/badge/vega.codes-%D0%BE%D1%81%D0%BD%D0%BE%D0%B2%D0%BD%D0%BE%D0%B9_%D0%BF%D1%80%D0%BE%D0%B5%D0%BA%D1%82-6E56CF?style=for-the-badge" /></a>
   <a href="https://api.vega.chat"><img alt="api.vega.chat" src="https://img.shields.io/badge/api.vega.chat-%D0%98%D0%98_%D0%BF%D1%80%D0%BE%D0%B2%D0%B0%D0%B9%D0%B4%D0%B5%D1%80-0EA5E9?style=for-the-badge" /></a>
 </p>
@@ -89,12 +89,12 @@ pi
 
 - Telegram: [@ingeniare](https://t.me/ingeniare) — вопросы, баги, идеи
 - Email: [mail@vega.chat](mailto:mail@vega.chat)
-- Документация Pi: [pi.dev/docs](https://pi.dev/docs/latest) — применима к форку целиком
+- Документация: [packages/coding-agent/docs](packages/coding-agent/docs) — плюс [документы апстрима](https://github.com/earendil-works/pi/tree/main/docs)
 - Апстрим: [earendil-works/pi](https://github.com/earendil-works/pi) — форк регулярно синхронизируется с ним
 
-## Что такое Pi
+## Что такое pion
 
-Pi — агент-харнесс, который подстраивается под ваши процессы, а не наоборот: [расширения](packages/coding-agent/docs/extensions.md), [скиллы](packages/coding-agent/docs/skills.md), [шаблоны промптов](packages/coding-agent/docs/prompt-templates.md), [темы](packages/coding-agent/docs/themes.md). Всё это можно собирать в [пакеты](packages/coding-agent/docs/packages.md) и раздавать через npm или git.
+pion — агент-харнесс, который подстраивается под ваши процессы, а не наоборот: [расширения](packages/coding-agent/docs/extensions.md), [скиллы](packages/coding-agent/docs/skills.md), [шаблоны промптов](packages/coding-agent/docs/prompt-templates.md), [темы](packages/coding-agent/docs/themes.md). Всё это можно собирать в [пакеты](packages/coding-agent/docs/packages.md) и раздавать через npm или git.
 
 Использовать можно [интерактивно](packages/coding-agent/docs/usage.md), в [print/JSON-режиме](packages/coding-agent/docs/cli.md), по [RPC](packages/coding-agent/docs/rpc.md) или через [TypeScript SDK](packages/coding-agent/docs/sdk.md).
 

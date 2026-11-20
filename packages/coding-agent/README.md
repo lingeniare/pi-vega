@@ -1,6 +1,6 @@
 <p align="center">
   <a href="https://pi.dev">
-    <img alt="Pi logo" src="https://pi.dev/logo-auto.svg" width="128">
+    <img alt="Pion logo" src="https://pi.dev/logo-auto.svg" width="128">
   </a>
 </p>
 <p align="center">
@@ -10,76 +10,76 @@
 
 > New issues and PRs from new contributors are closed automatically. Maintainers review closed submissions daily. See [CONTRIBUTING.md](https://github.com/earendil-works/pi/blob/main/CONTRIBUTING.md).
 
-# Pi
+# Pion
 
-Pi is a minimal, extensible agent harness that you can make your own.
+Pion is a minimal, extensible agent harness that you can make your own.
 
-Adapt Pi to your workflows, not the other way around. Customize Pi with [extensions](docs/extensions.md), [skills](docs/skills.md), [prompt templates](docs/prompt-templates.md), and [themes](docs/themes.md). Bundle them as [Pi packages](docs/packages.md) and share via npm or git.
+Adapt Pion to your workflows, not the other way around. Customize Pion with [extensions](docs/extensions.md), [skills](docs/skills.md), [prompt templates](docs/prompt-templates.md), and [themes](docs/themes.md). Bundle them as [Pion packages](docs/packages.md) and share via npm or git.
 
-Pi ships with powerful defaults but skips features like sub-agents and plan mode. Ask Pi to build what you want, or install a package that does it your way.
+Pion ships with powerful defaults but skips features like sub-agents and plan mode. Ask Pion to build what you want, or install a package that does it your way.
 
-Use Pi [interactively](docs/usage.md), automate it in [print or JSON mode](docs/cli.md), control it over [RPC](docs/rpc.md), or build apps with the [Pi TypeScript SDK](docs/sdk.md). See [OpenClaw](https://github.com/OpenClaw/OpenClaw) for a real-world integration.
+Use Pion [interactively](docs/usage.md), automate it in [print or JSON mode](docs/cli.md), control it over [RPC](docs/rpc.md), or build apps with the [Pion TypeScript SDK](docs/sdk.md). See [OpenClaw](https://github.com/OpenClaw/OpenClaw) for a real-world integration.
 
 ## Getting started
 
 Install the command-line interface:
 
 ```bash
-curl -fsSL https://vega.codes/pi/install.sh | sh
+curl -fsSL https://vega.codes/pion/install.sh | sh
 ```
 
 On Windows:
 
 ```shell
-powershell -c "irm https://vega.codes/pi/install.ps1 | iex"
+powershell -c "irm https://vega.codes/pion/install.ps1 | iex"
 ```
 
-The installer pins all dependencies and updates Pi with `pi update`. Alternatively, install directly from a tarball, which does not pin transitive dependencies:
+The installer pins all dependencies and updates Pion with `pion update`. Alternatively, install directly from a tarball, which does not pin transitive dependencies:
 
 ```bash
-npm install -g --ignore-scripts https://vega.codes/pi/releases/latest/pi-coding-agent-latest.tgz
+npm install -g --ignore-scripts https://vega.codes/pion/releases/latest/pi-coding-agent-latest.tgz
 ```
 
-The same tarball URL works with `pnpm add -g` and `bun add -g`. Pi requires Node.js 22.19 or newer. The macOS, Linux, and Windows installers can install it if needed. Pi does not require dependency lifecycle scripts for a normal npm installation.
+The same tarball URL works with `pnpm add -g` and `bun add -g`. Pion requires Node.js 22.19 or newer. The macOS, Linux, and Windows installers can install it if needed. Pion does not require dependency lifecycle scripts for a normal npm installation.
 
-On macOS and Linux, Nix users can install the latest release with `nix profile add github:lingeniare/pi-vega/stable`. See the [quickstart](docs/quickstart.md#1-install-pi) for updating and pinning releases.
+On macOS and Linux, Nix users can install the latest release with `nix profile add github:lingeniare/pi-vega/stable`. See the [quickstart](docs/quickstart.md#1-install-pion) for updating and pinning releases.
 
-Start Pi in the directory where you want it to work:
+Start Pion in the directory where you want it to work:
 
 ```bash
 cd /path/to/project
-pi
+pion
 ```
 
-For a built-in AI provider, run `/login` inside Pi to connect a subscription or API key. Then give Pi a task.
+For a built-in AI provider, run `/login` inside Pion to connect a subscription or API key. Then give Pion a task.
 
 See the [documentation](docs/index.md) for full setup and usage instructions.
 
 ## Share your OSS coding agent sessions
 
-If you use Pi for open source work, please share your coding agent sessions.
+If you use Pion for open source work, please share your coding agent sessions.
 
 Public OSS session data helps improve models, prompts, tools, and evaluations using real development workflows.
 
 For the full explanation, see [this post on X](https://x.com/badlogicgames/status/2037811643774652911).
 
-To publish sessions, use [`badlogic/pi-share-hf`](https://github.com/badlogic/pi-share-hf) using a Hugging Face account and the Hugging Face CLI.
+To publish sessions, use [`badlogic/pion-share-hf`](https://github.com/badlogic/pion-share-hf) using a Hugging Face account and the Hugging Face CLI.
 
-- [Demo video](https://x.com/badlogicgames/status/2041151967695634619) on how to publish Pi sessions
-- Published Pi development sessions: [`badlogicgames/pi-mono` on Hugging Face](https://huggingface.co/datasets/badlogicgames/pi-mono).
+- [Demo video](https://x.com/badlogicgames/status/2041151967695634619) on how to publish Pion sessions
+- Published Pion development sessions: [`badlogicgames/pi-mono` on Hugging Face](https://huggingface.co/datasets/badlogicgames/pi-mono).
 
 ## Development
 
-Clone the repository, install its dependencies, and run Pi from source:
+Clone the repository, install its dependencies, and run Pion from source:
 
 ```bash
 git clone https://github.com/earendil-works/pi
-cd pi
+cd pion
 npm install --ignore-scripts
-./pi-test.sh
+./pion-test.sh
 ```
 
-`pi-test.sh` can be called from any directory and preserves the caller's working directory.
+`pion-test.sh` can be called from any directory and preserves the caller's working directory.
 
 Before submitting changes, run:
 

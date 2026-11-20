@@ -265,7 +265,7 @@ describe("createAgentSession with virtual models", () => {
 	let tempDir: string;
 
 	beforeEach(() => {
-		tempDir = mkdtempSync(join(tmpdir(), "pi-virtual-models-"));
+		tempDir = mkdtempSync(join(tmpdir(), "pion-virtual-models-"));
 	});
 
 	afterEach(() => {

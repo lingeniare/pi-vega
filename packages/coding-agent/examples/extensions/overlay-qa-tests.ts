@@ -1,7 +1,7 @@
 /**
  * Overlay QA Tests - comprehensive overlay positioning and edge case tests
  *
- * Usage: pi --extension ./examples/extensions/overlay-qa-tests.ts
+ * Usage: pion --extension ./examples/extensions/overlay-qa-tests.ts
  *
  * Commands:
  *   /overlay-animation  - Real-time animation demo (~30 FPS, proves DOOM-like rendering works)
@@ -28,7 +28,7 @@ import { spawn } from "child_process";
 let globalToggleHandle: OverlayHandle | null = null;
 
 export default function (pi: ExtensionAPI) {
-	// Animation demo - proves overlays can handle real-time updates (like pi-doom would need)
+	// Animation demo - proves overlays can handle real-time updates (like pion-doom would need)
 	pi.registerCommand("overlay-animation", {
 		description: "Test real-time animation in overlay (~30 FPS)",
 		handler: async (_args: string, ctx: ExtensionCommandContext) => {
@@ -760,7 +760,7 @@ class SidepanelComponent extends BaseOverlay {
 	}
 }
 
-// Animation demo - proves overlays can handle real-time updates like pi-doom
+// Animation demo - proves overlays can handle real-time updates like pion-doom
 class AnimationDemoComponent extends BaseOverlay {
 	private tui: TUI;
 	private frame = 0;
@@ -836,7 +836,7 @@ class AnimationDemoComponent extends BaseOverlay {
 		lines.push(border("│") + padLine(``) + border("│"));
 		lines.push(border("│") + padLine(th.fg("dim", " This proves overlays can handle")) + border("│"));
 		lines.push(border("│") + padLine(th.fg("dim", " real-time game-like rendering.")) + border("│"));
-		lines.push(border("│") + padLine(th.fg("dim", " (pi-doom uses same approach)")) + border("│"));
+		lines.push(border("│") + padLine(th.fg("dim", " (pion-doom uses same approach)")) + border("│"));
 		lines.push(border("│") + padLine(``) + border("│"));
 		lines.push(border("│") + padLine(th.fg("dim", " Press Esc to close")) + border("│"));
 		lines.push(border(`╰${"─".repeat(innerW)}╯`));

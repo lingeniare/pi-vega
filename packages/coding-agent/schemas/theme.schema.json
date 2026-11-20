@@ -343,8 +343,8 @@
       "additionalProperties": false
     }
   },
-  "title": "Pi Coding Agent Theme",
-  "description": "Theme schema for Pi coding agent",
+  "title": "Pion Coding Agent Theme",
+  "description": "Theme schema for Pion coding agent",
   "additionalProperties": false,
   "$defs": {
     "ColorValue": {

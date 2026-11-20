@@ -22,7 +22,7 @@ describe("JSONL share export", () => {
 	});
 
 	it("adds presentation data without changing conversation IDs or links", async () => {
-		const tempDir = mkdtempSync(join(tmpdir(), "pi-jsonl-share-"));
+		const tempDir = mkdtempSync(join(tmpdir(), "pion-jsonl-share-"));
 		tempDirs.push(tempDir);
 		const sessionManager = SessionManager.inMemory(tempDir);
 		const { session } = await createAgentSession({

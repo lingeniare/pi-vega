@@ -34,7 +34,7 @@ beforeEach(() => server.reset());
 afterAll(() => server.stop());
 
 async function agentDirWith(modelsJson: unknown) {
-	const directory = await mkdtemp(join(tmpdir(), "pi-eval-provider-probe-"));
+	const directory = await mkdtemp(join(tmpdir(), "pion-eval-provider-probe-"));
 	temporaryDirectories.push(directory);
 	await writeFile(join(directory, "models.json"), `${JSON.stringify(modelsJson)}\n`);
 	return directory;
@@ -120,7 +120,7 @@ describe("inspectProvider", () => {
 	});
 
 	it("returns a structured error when models.json cannot be parsed", async () => {
-		const directory = await mkdtemp(join(tmpdir(), "pi-eval-provider-probe-"));
+		const directory = await mkdtemp(join(tmpdir(), "pion-eval-provider-probe-"));
 		temporaryDirectories.push(directory);
 		await writeFile(join(directory, "models.json"), "{");
 		const output = await inspectProvider(
@@ -194,7 +194,7 @@ describe("inspectAddedModel", () => {
 	});
 
 	it("returns a structured error when models.json cannot be parsed", async () => {
-		const directory = await mkdtemp(join(tmpdir(), "pi-eval-provider-probe-"));
+		const directory = await mkdtemp(join(tmpdir(), "pion-eval-provider-probe-"));
 		temporaryDirectories.push(directory);
 		await writeFile(join(directory, "models.json"), "{");
 		await expect(inspectAddedModel(await loadConfiguredModelRuntime(directory), PROVIDER, MODEL_ID)).resolves.toEqual(

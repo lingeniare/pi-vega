@@ -14,7 +14,7 @@
  *   /ir https://github.com/earendil-works/pi/issues/123
  *   /ir https://example.com/path/session.jsonl
  *
- *   pi "/ir <gist-id>"
+ *   pion "/ir <gist-id>"
  */
 
 import { Buffer } from "node:buffer";
@@ -181,7 +181,7 @@ function getCwdRewriteVariants(sourceCwd: string): string[] {
 
 function getCiWorkdirName(sourceCwd: string): string | undefined {
 	const name = getPathTailName(sourceCwd);
-	return /^pi-ci-[0-9a-f]{32}$/i.test(name) ? name : undefined;
+	return /^(?:pi|pion)-ci-[0-9a-f]{32}$/i.test(name) ? name : undefined;
 }
 
 function detectSessionPlatform(cwd: string): SessionPlatform {

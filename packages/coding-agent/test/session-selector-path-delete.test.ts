@@ -55,7 +55,7 @@ function createSymlinkedSessionPaths(): {
 	parentAliasB: string;
 	childAliasB: string;
 } {
-	const baseDir = mkdtempSync(join(tmpdir(), "pi-session-selector-"));
+	const baseDir = mkdtempSync(join(tmpdir(), "pion-session-selector-"));
 	const realDir = join(baseDir, "real");
 	const aliasADir = join(baseDir, "alias-a");
 	const aliasBDir = join(baseDir, "alias-b");
@@ -357,7 +357,7 @@ describe("session selector path/delete interactions", () => {
 	});
 
 	it("keeps the next session selected when a progressive reload after delete starts with another session", async () => {
-		const dir = mkdtempSync(join(tmpdir(), "pi-session-selector-"));
+		const dir = mkdtempSync(join(tmpdir(), "pion-session-selector-"));
 		tempDirs.push(dir);
 		const sessions = [1, 2, 3, 4, 5].map((i) => {
 			const path = join(dir, `s${i}.jsonl`);

@@ -5,7 +5,7 @@
  * without replacing or reparsing the complete rendered prompt.
  *
  * Usage:
- * 1. Copy this file to ~/.pi/agent/extensions/ or your project's .pi/extensions/
+ * 1. Copy this file to ~/.pion/agent/extensions/ or your project's .pion/extensions/
  * 2. Use the extension — it automatically adapts to your active tools and skills
  */
 

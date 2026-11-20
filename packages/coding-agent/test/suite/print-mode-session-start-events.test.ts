@@ -45,7 +45,7 @@ describe("print mode JSON output of session_start events", () => {
 	});
 
 	test("streams entries appended by session_start at startup and after ctx.newSession()", async () => {
-		const tempDir = join(tmpdir(), `pi-print-start-${Date.now()}-${Math.random().toString(36).slice(2)}`);
+		const tempDir = join(tmpdir(), `pion-print-start-${Date.now()}-${Math.random().toString(36).slice(2)}`);
 		mkdirSync(tempDir, { recursive: true });
 		const faux = registerFauxProvider({ models: [{ id: "faux-1", reasoning: false }] });
 		cleanups.push(() => {

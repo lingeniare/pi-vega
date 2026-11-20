@@ -15,8 +15,8 @@ const strictToolNames = ["read", "bash", "powershell", "edit", "write"] as const
 describe("strict built-in tools", () => {
 	afterEach(() => vi.unstubAllEnvs());
 
-	it.each([undefined, "0", "1"])("prefers strict sampling with PI_EXPERIMENTAL=%s", (experimental) => {
-		vi.stubEnv("PI_EXPERIMENTAL", experimental);
+	it.each([undefined, "0", "1"])("prefers strict sampling with PION_EXPERIMENTAL=%s", (experimental) => {
+		vi.stubEnv("PION_EXPERIMENTAL", experimental);
 		const definitions = createAllToolDefinitions(process.cwd());
 		const tools = createAllTools(process.cwd());
 		for (const name of strictToolNames) {
@@ -49,7 +49,7 @@ describe("strict built-in tools", () => {
 	it.each([{ activeTools: [] }, { activeTools: ["read"] }, { activeTools: [...strictToolNames] }])(
 		"allows extensions to re-register tools without strict sampling: $activeTools",
 		async ({ activeTools }) => {
-			const cwd = mkdtempSync(join(tmpdir(), "pi-non-strict-tools-"));
+			const cwd = mkdtempSync(join(tmpdir(), "pion-non-strict-tools-"));
 			const agentDir = join(cwd, "agent");
 			const settingsManager = SettingsManager.inMemory({ defaultTools: activeTools });
 			const resourceLoader = new DefaultResourceLoader({

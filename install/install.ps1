@@ -3,18 +3,18 @@
 $ErrorActionPreference = "Stop"
 
 $PiPackage = "@earendil-works/pi-coding-agent"
-$PiCmd = "pi"
+$PiCmd = "pion"
 # Releases are published as GitHub Release assets on the fork: metadata and the
 # latest tarball under releases/latest/download, versioned manifests and
 # tarballs under releases/download/<tag>.
-$PiReleasesUrl = if ($env:PI_RELEASES_URL) { $env:PI_RELEASES_URL } else { "https://github.com/lingeniare/pi-vega/releases" }
-$PiInstallerMetadataUrl = if ($env:PI_INSTALLER_METADATA_URL) { $env:PI_INSTALLER_METADATA_URL } else { "$PiReleasesUrl/latest/download/installer-release.json" }
-$PiInstallerDownloadBase = if ($env:PI_INSTALLER_DOWNLOAD_BASE) { $env:PI_INSTALLER_DOWNLOAD_BASE } else { "$PiReleasesUrl/download" }
+$PiReleasesUrl = if ($env:PION_RELEASES_URL) { $env:PION_RELEASES_URL } else { "https://github.com/lingeniare/pi-vega/releases" }
+$PiInstallerMetadataUrl = if ($env:PION_INSTALLER_METADATA_URL) { $env:PION_INSTALLER_METADATA_URL } else { "$PiReleasesUrl/latest/download/installer-release.json" }
+$PiInstallerDownloadBase = if ($env:PION_INSTALLER_DOWNLOAD_BASE) { $env:PION_INSTALLER_DOWNLOAD_BASE } else { "$PiReleasesUrl/download" }
 # Package spec used for the legacy npm install path: a tarball URL on GitHub
 # Releases because this fork is not published to an npm registry.
-$PiPackageSpec = if ($env:PI_PACKAGE_SPEC) { $env:PI_PACKAGE_SPEC } else { "$PiReleasesUrl/latest/download/pi-coding-agent-latest.tgz" }
+$PiPackageSpec = if ($env:PION_PACKAGE_SPEC) { $env:PION_PACKAGE_SPEC } else { "$PiReleasesUrl/latest/download/pi-coding-agent-latest.tgz" }
 $PiManagedInstallMarker = "managed-install.json"
-# Pi publishes npm-shrinkwrap.json, so the explicit installer/reinstaller can
+# Pion publishes npm-shrinkwrap.json, so the explicit installer/reinstaller can
 # bypass npm's release-age gate without reopening transitive dependency ranges.
 $NpmMinReleaseAgeArg = "--min-release-age=0"
 $NodeMinimum = [version]"22.19.0"
@@ -24,10 +24,10 @@ $PiCr = [char]13
 
 function Write-InstallerTitle {
   if (Test-InstallerAnsiOutput) {
-    [Console]::Write("${PiEsc}[1m  Pi Installer${PiEsc}[0m`n${PiEsc}[2m  There are many coding agents, but this one is mine.${PiEsc}[0m`n`n")
+    [Console]::Write("${PiEsc}[1m  Pion Installer${PiEsc}[0m`n${PiEsc}[2m  There are many coding agents, but this one is mine.${PiEsc}[0m`n`n")
   } else {
     Write-Host ""
-    Write-Host "  Pi Installer"
+    Write-Host "  Pion Installer"
     Write-Host "  There are many coding agents, but this one is mine."
     Write-Host ""
   }
@@ -129,15 +129,15 @@ function Get-NpmInstallProgressLabel {
       $label = "fetching managed package manifest"
     } elseif ($line -like "Downloading managed installer package-lock.json*") {
       $label = "fetching managed package lock"
-    } elseif ($line -like "Installing managed Pi dependencies*") {
+    } elseif ($line -like "Installing managed Pion dependencies*") {
       $label = "installing managed dependencies"
-    } elseif ($line -like "Verifying managed Pi*") {
+    } elseif ($line -like "Verifying managed Pion*") {
       $label = "verifying managed package"
-    } elseif ($line -like "Activating managed Pi*") {
+    } elseif ($line -like "Activating managed Pion*") {
       $label = "activating managed package"
-    } elseif ($line -like "Removing npm-installed Pi*") {
+    } elseif ($line -like "Removing npm-installed Pion*") {
       $label = "removing npm-installed package"
-    } elseif ($line -like "Managed Pi install complete*") {
+    } elseif ($line -like "Managed Pion install complete*") {
       $label = "managed install complete"
     } elseif (($line -like "npm verbose title npm install*") -or ($line -like "npm verbose title npm ci*")) {
       $label = "resolving packages"
@@ -251,7 +251,7 @@ function Write-StaticLogo {
   Write-Host ""
   Write-Host ("  " + ($block * 6))
   Write-Host ("  " + ($block * 2) + "  " + ($block * 2))
-  Write-Host ("  " + ($block * 4) + "  " + ($block * 2))
+  Write-Host ("  " + ($block * 6))
   Write-Host ("  " + ($block * 2) + "    " + ($block * 2))
   Write-Host ""
 }
@@ -292,33 +292,33 @@ function Get-LogoCellColor {
   )
 
   if ($White -eq 1) {
-    if (Test-InCells $Y $X "3,2 3,3 3,4 4,2 4,4 5,2 5,3 5,5 6,2 6,5") { return "white" }
+    if (Test-InCells $Y $X "3,2 3,3 3,4 4,2 4,4 5,2 5,3 5,4 6,2 7,2 7,4") { return "white" }
     return "panel"
   }
-  if (($Flash -eq 1) -and ($Y -eq 6) -and ($X -ge 1) -and ($X -le 6)) { return "flash" }
+  if (($Flash -eq 1) -and ($Y -eq 7) -and ($X -ge 1) -and ($X -le 6)) { return "flash" }
 
-  if (($Active -eq "left") -and (Test-InPiece $Y $X $ActiveY $ActiveX "0,0 1,0 1,1 2,0")) { return "blue" }
-  if (($Active -eq "top") -and (Test-InPiece $Y $X $ActiveY $ActiveX "0,0 0,1 0,2 1,2")) { return "coral" }
-  if (($Active -eq "right") -and (Test-InPiece $Y $X $ActiveY $ActiveX "0,0 1,0 2,0 2,1")) { return "gold" }
+  if (($Active -eq "left") -and (Test-InPiece $Y $X $ActiveY $ActiveX "0,0 1,0 2,0 3,0 4,0")) { return "blue" }
+  if (($Active -eq "top") -and (Test-InPiece $Y $X $ActiveY $ActiveX "0,0 0,1 1,1 2,0 2,1")) { return "coral" }
+  if (($Active -eq "right") -and (Test-InPiece $Y $X $ActiveY $ActiveX "0,0")) { return "gold" }
 
   if ($Phase -eq 4) {
-    if (Test-InCells $Y $X "2,2 2,3 2,4 3,4") { return "coral" }
-    if (Test-InCells $Y $X "3,2 4,2 4,3 5,2") { return "blue" }
-    if (Test-InCells $Y $X "4,5 5,5") { return "gold" }
+    if (Test-InCells $Y $X "2,3 2,4 3,4 4,3 4,4") { return "coral" }
+    if (Test-InCells $Y $X "2,2 3,2 4,2 5,2 6,2") { return "blue" }
+    if (Test-InCells $Y $X "6,4") { return "gold" }
     return "panel"
   }
 
   if ($Phase -ge 5) {
-    if (Test-InCells $Y $X "3,2 3,3 3,4 4,4") { return "coral" }
-    if (Test-InCells $Y $X "4,2 5,2 5,3 6,2") { return "blue" }
-    if (Test-InCells $Y $X "5,5 6,5") { return "gold" }
+    if (Test-InCells $Y $X "3,3 3,4 4,4 5,3 5,4") { return "coral" }
+    if (Test-InCells $Y $X "3,2 4,2 5,2 6,2 7,2") { return "blue" }
+    if (Test-InCells $Y $X "7,4") { return "gold" }
     return "panel"
   }
 
-  if (($Phase -le 3) -and (Test-InCells $Y $X "6,1 6,2 6,3 6,4")) { return "turquoise" }
-  if (($Phase -ge 2) -and (Test-InCells $Y $X "2,2 2,3 2,4 3,4")) { return "coral" }
-  if (($Phase -ge 1) -and (Test-InCells $Y $X "3,2 4,2 4,3 5,2")) { return "blue" }
-  if (($Phase -ge 3) -and (Test-InCells $Y $X "4,5 5,5 6,5 6,6")) { return "gold" }
+  if (($Phase -le 3) -and (Test-InCells $Y $X "8,1 8,2 8,3 8,4")) { return "turquoise" }
+  if (($Phase -ge 2) -and (Test-InCells $Y $X "2,3 2,4 3,4 4,3 4,4")) { return "coral" }
+  if (($Phase -ge 1) -and (Test-InCells $Y $X "2,2 3,2 4,2 5,2 6,2")) { return "blue" }
+  if (($Phase -ge 3) -and (Test-InCells $Y $X "5,5")) { return "gold" }
 
   return "panel"
 }
@@ -369,9 +369,9 @@ function Show-PiLogoAnimation {
 
   [Console]::Write("${esc}?25l${esc}2J${esc}H")
 
-  foreach ($y in 0..3) { Write-LogoFrame $clear $reset 0 "left" 2 $y 0 0; Start-Sleep -Milliseconds 75 }
-  foreach ($y in 0..2) { Write-LogoFrame $clear $reset 1 "top" 2 $y 0 0; Start-Sleep -Milliseconds 75 }
-  foreach ($y in 0..4) { Write-LogoFrame $clear $reset 2 "right" 5 $y 0 0; Start-Sleep -Milliseconds 75 }
+  foreach ($y in 0..2) { Write-LogoFrame $clear $reset 0 "left" 2 $y 0 0; Start-Sleep -Milliseconds 75 }
+  foreach ($y in 0..2) { Write-LogoFrame $clear $reset 1 "top" 3 $y 0 0; Start-Sleep -Milliseconds 75 }
+  foreach ($y in 0..5) { Write-LogoFrame $clear $reset 2 "right" 5 $y 0 0; Start-Sleep -Milliseconds 75 }
 
   Write-LogoFrame $clear $reset 3 "none" 0 0 0 0; Start-Sleep -Milliseconds 250
   Write-LogoFrame $clear $reset 3 "none" 0 0 1 0; Start-Sleep -Milliseconds 80
@@ -409,16 +409,16 @@ function Invoke-PreflightChecks {
   if ($node) {
     $nodeVersion = (& node --version).Trim()
     if (-not (Test-NodeVersionIsNewEnough $nodeVersion)) {
-      Write-Output "error: Pi requires Node.js 22.19.0 or newer. Found $nodeVersion."
+      Write-Output "error: Pion requires Node.js 22.19.0 or newer. Found $nodeVersion."
       $status = 1
     }
   } else {
-    Write-Output "error: Node.js 22.19.0 or newer is required to install Pi."
+    Write-Output "error: Node.js 22.19.0 or newer is required to install Pion."
     $status = 1
   }
 
   if (-not (Get-Command npm.cmd -ErrorAction SilentlyContinue)) {
-    Write-Output "error: npm is required to install Pi."
+    Write-Output "error: npm is required to install Pion."
     $status = 1
   }
 
@@ -488,7 +488,7 @@ function Add-UserPathEntry {
 
   # Update both the persisted user PATH and this PowerShell process. The process
   # update lets the remainder of this installer immediately find newly installed
-  # node/npm/pi shims without asking the user to restart first.
+  # node/npm/pion shims without asking the user to restart first.
   $path = (Get-UserEnv -Key "Path") -split ";" | Where-Object { $_ -and ($_ -ne $Directory) }
   if ($Prepend) {
     $path = @($Directory) + $path
@@ -552,7 +552,7 @@ function Write-PathRefreshNote {
   }
 
   Write-Host ""
-  Write-Host "If pi is not found in the terminal that launched this installer,"
+  Write-Host "If pion is not found in the terminal that launched this installer,"
   Write-Host "restart it or update PATH there now:"
   Write-Host ""
   Write-Host "  $command"
@@ -609,9 +609,9 @@ function Install-NodeStandalone {
   $nodeArch = Get-WindowsArch
   $nodeDistBase = "https://nodejs.org/dist/latest-v22.x"
   # Keep the auto-installed Node.js separate from the user's normal Node setup.
-  # npm itself still installs Pi globally according to npm's configured prefix.
-  $nodeBaseDir = Join-Path $env:LOCALAPPDATA "pi-node"
-  $nodeTmpDir = Join-Path ([System.IO.Path]::GetTempPath()) "pi-node-$PID"
+  # npm itself still installs Pion globally according to npm's configured prefix.
+  $nodeBaseDir = Join-Path $env:LOCALAPPDATA "pion-node"
+  $nodeTmpDir = Join-Path ([System.IO.Path]::GetTempPath()) "pion-node-$PID"
 
   Remove-Item $nodeTmpDir -Recurse -Force -ErrorAction SilentlyContinue
   New-Item -ItemType Directory -Force -Path $nodeTmpDir, $nodeBaseDir | Out-Null
@@ -654,7 +654,7 @@ function Read-NodeNpmInstallChoice {
     return $false
   }
 
-  $answer = Read-Host "Pi needs Node.js 22.19.0 or newer and npm. Install standalone Node.js now? [Y/n]"
+  $answer = Read-Host "Pion needs Node.js 22.19.0 or newer and npm. Install standalone Node.js now? [Y/n]"
   if ($answer -match "^(n|no)$") {
     Write-Host ""
     Write-Host "Will skip Node.js install."
@@ -665,16 +665,16 @@ function Read-NodeNpmInstallChoice {
 }
 
 function Get-PiAgentDir {
-  return Join-Path ([Environment]::GetFolderPath("UserProfile")) ".pi\agent"
+  return Join-Path ([Environment]::GetFolderPath("UserProfile")) ".pion\agent"
 }
 
 function Test-PiManagedInstallEnabled {
-  return $env:PI_LEGACY_INSTALL -ne "1"
+  return $env:PION_LEGACY_INSTALL -ne "1"
 }
 
 function Get-PiManagedDefaultAgentDir {
-  if ($env:PI_CODING_AGENT_DIR) {
-    return $ExecutionContext.SessionState.Path.GetUnresolvedProviderPathFromPSPath($env:PI_CODING_AGENT_DIR)
+  if ($env:PION_CODING_AGENT_DIR) {
+    return $ExecutionContext.SessionState.Path.GetUnresolvedProviderPathFromPSPath($env:PION_CODING_AGENT_DIR)
   }
   return Get-PiAgentDir
 }
@@ -770,14 +770,14 @@ function Test-WingetAvailable {
 
 function Read-GitBashInstallChoice {
   if (-not (Test-InstallerInteractiveInput)) {
-    Write-Host "No terminal detected; skipping optional Git Bash install. Install Git for Windows or set shellPath in settings.json for Pi bash commands."
+    Write-Host "No terminal detected; skipping optional Git Bash install. Install Git for Windows or set shellPath in settings.json for Pion bash commands."
     return "none"
   }
 
   $gitDir = Get-PiManagedGitBashDir
   $wingetAvailable = Test-WingetAvailable
 
-  Write-Host "Pi needs Git Bash for bash commands."
+  Write-Host "Pion needs Git Bash for bash commands."
   Write-Host ""
   Write-Host "Choose Git Bash install method:"
   Write-Host ""
@@ -812,7 +812,7 @@ function Get-PortableGitAsset {
   $assetSuffix = if ($gitArch -eq "arm64") { "arm64.7z.exe" } else { "64-bit.7z.exe" }
 
   Write-Host "Resolving Portable Git for win-$gitArch"
-  $release = Invoke-RestMethod -Uri $GitForWindowsLatestReleaseApi -Headers @{ "User-Agent" = "pi-installer" }
+  $release = Invoke-RestMethod -Uri $GitForWindowsLatestReleaseApi -Headers @{ "User-Agent" = "pion-installer" }
   $asset = $release.assets | Where-Object { $_.name -like "PortableGit-*$assetSuffix" } | Select-Object -First 1
   if (-not $asset) {
     Write-Host "No Portable Git binary is available for win-$gitArch."
@@ -866,12 +866,12 @@ function Install-GitBashWithWinget {
     $configuredShellPath = Get-PiSettingsShellPath
     if ($configuredShellPath -and (-not (Test-Path $configuredShellPath -PathType Leaf))) {
       Set-PiSettingsShellPath $installedBash
-      Write-Host "Pi shellPath set to $installedBash"
+      Write-Host "Pion shellPath set to $installedBash"
     }
     Write-Host "Git Bash installed at $installedBash"
   } else {
-    Write-Host "Git for Windows was installed, but Pi cannot find bash in this terminal yet."
-    Write-Host "Restart your shell before using Pi bash commands."
+    Write-Host "Git for Windows was installed, but Pion cannot find bash in this terminal yet."
+    Write-Host "Restart your shell before using Pion bash commands."
   }
 }
 
@@ -884,7 +884,7 @@ function Install-GitBashStandalone {
     return
   }
 
-  $gitTmpDir = Join-Path ([System.IO.Path]::GetTempPath()) "pi-git-bash-$PID"
+  $gitTmpDir = Join-Path ([System.IO.Path]::GetTempPath()) "pion-git-bash-$PID"
   $gitExtractDir = Join-Path $gitTmpDir "extract"
 
   Remove-Item $gitTmpDir -Recurse -Force -ErrorAction SilentlyContinue
@@ -916,7 +916,7 @@ function Install-GitBashStandalone {
 
   Set-PiSettingsShellPath $gitBashPath
   Write-Host "Git Bash installed at $gitDir"
-  Write-Host "Pi shellPath set to $gitBashPath"
+  Write-Host "Pion shellPath set to $gitBashPath"
 }
 
 function Get-NpmGlobalPrefix {
@@ -952,7 +952,7 @@ function Test-PathWritableOrCreatable {
     return $false
   }
 
-  $probe = Join-Path $checkPath ".pi-write-test-$PID"
+  $probe = Join-Path $checkPath ".pion-write-test-$PID"
   try {
     New-Item -ItemType File -Path $probe -Force | Out-Null
     Remove-Item $probe -Force
@@ -987,7 +987,7 @@ function Get-PiBinDir {
 function Get-PiInstalledPaths {
   $binDir = Get-PiBinDir
   if ($binDir) {
-    return @((Join-Path $binDir "pi.cmd"), (Join-Path $binDir "pi.ps1"), (Join-Path $binDir "pi"))
+    return @((Join-Path $binDir "pion.cmd"), (Join-Path $binDir "pion.ps1"), (Join-Path $binDir "pion"))
   }
 
   return @()
@@ -999,16 +999,16 @@ function Remove-BlockedPiPowerShellShim {
     return
   }
 
-  # npm creates both pi.cmd and pi.ps1, and PowerShell resolves the .ps1 shim
-  # first. Under these policies that makes `pi` fail even though pi.cmd is
+  # npm creates both pion.cmd and pion.ps1, and PowerShell resolves the .ps1 shim
+  # first. Under these policies that makes `pion` fail even though pion.cmd is
   # allowed, so remove only the blocked shim instead of weakening the user's
   # execution policy.
   $binDir = Get-PiBinDir
-  $cmdShim = Join-Path $binDir "pi.cmd"
-  $powerShellShim = Join-Path $binDir "pi.ps1"
+  $cmdShim = Join-Path $binDir "pion.cmd"
+  $powerShellShim = Join-Path $binDir "pion.ps1"
   if ((Test-Path $cmdShim -PathType Leaf) -and (Test-Path $powerShellShim -PathType Leaf)) {
     Remove-Item $powerShellShim -Force
-    Write-Host "  ok configured Pi for PowerShell's $executionPolicy execution policy"
+    Write-Host "  ok configured Pion for PowerShell's $executionPolicy execution policy"
   }
 }
 
@@ -1018,15 +1018,15 @@ function Select-NpmInstallPrefix {
     return ""
   }
 
-  # If an existing global pi is present but npm's prefix is not writable, do not
+  # If an existing global pion is present but npm's prefix is not writable, do not
   # install a second copy elsewhere: PATH would likely continue resolving to the
   # old shim, making the successful install look broken.
-  $existingGlobalPi = @((Join-Path $npmPrefix "pi.cmd"), (Join-Path $npmPrefix "pi.ps1")) | Where-Object { Test-Path $_ } | Select-Object -First 1
+  $existingGlobalPi = @((Join-Path $npmPrefix "pion.cmd"), (Join-Path $npmPrefix "pion.ps1")) | Where-Object { Test-Path $_ } | Select-Object -First 1
   if ($npmPrefix -and $existingGlobalPi) {
     Write-Host "npm's global directory is not writable: $npmPrefix"
-    Write-Host "Pi is already installed at: $existingGlobalPi"
+    Write-Host "Pion is already installed at: $existingGlobalPi"
     Write-Host ""
-    Write-Host "Installing another copy under your profile could leave your shell using the old global pi, so this installer stopped."
+    Write-Host "Installing another copy under your profile could leave your shell using the old global pion, so this installer stopped."
     exit 1
   }
 
@@ -1039,22 +1039,22 @@ function Select-NpmUninstallPrefix {
   param([string]$ExistingPiPath)
 
   # On Windows npm creates command shims directly in the prefix directory
-  # (pi.cmd / pi.ps1), unlike Unix where shims live under prefix/bin.
+  # (pion.cmd / pion.ps1), unlike Unix where shims live under prefix/bin.
   if (-not $ExistingPiPath) {
     return ""
   }
 
   $npmPrefix = Get-NpmGlobalPrefix
-  if ($npmPrefix -and (($ExistingPiPath -eq (Join-Path $npmPrefix "pi.cmd")) -or ($ExistingPiPath -eq (Join-Path $npmPrefix "pi.ps1")))) {
+  if ($npmPrefix -and (($ExistingPiPath -eq (Join-Path $npmPrefix "pion.cmd")) -or ($ExistingPiPath -eq (Join-Path $npmPrefix "pion.ps1")))) {
     return ""
   }
 
-  if ($env:PI_NPM_INSTALL_PREFIX -and (($ExistingPiPath -eq (Join-Path $env:PI_NPM_INSTALL_PREFIX "pi.cmd")) -or ($ExistingPiPath -eq (Join-Path $env:PI_NPM_INSTALL_PREFIX "pi.ps1")))) {
+  if ($env:PI_NPM_INSTALL_PREFIX -and (($ExistingPiPath -eq (Join-Path $env:PI_NPM_INSTALL_PREFIX "pion.cmd")) -or ($ExistingPiPath -eq (Join-Path $env:PI_NPM_INSTALL_PREFIX "pion.ps1")))) {
     return $env:PI_NPM_INSTALL_PREFIX
   }
 
   $fileName = Split-Path $ExistingPiPath -Leaf
-  if ($fileName -in @("pi.cmd", "pi.ps1", "pi")) {
+  if ($fileName -in @("pion.cmd", "pion.ps1", "pion")) {
     return (Split-Path $ExistingPiPath -Parent)
   }
 
@@ -1082,7 +1082,7 @@ function Test-PiManagedInstallMarker {
 const fs = require("node:fs");
 const marker = JSON.parse(fs.readFileSync(process.argv[2], "utf8").replace(/^\uFEFF/, ""));
 if (
-	marker.kind !== "pi-managed-install" ||
+	marker.kind !== "pion-managed-install" ||
 	marker.schemaVersion !== 1 ||
 	marker.layout !== "releases-v1"
 ) {
@@ -1100,7 +1100,7 @@ function Get-PiManagedInstallRootForCommand {
     return ""
   }
   $fileName = Split-Path $CommandPath -Leaf
-  if ($fileName -notin @("pi", "pi.cmd", "pi.ps1")) {
+  if ($fileName -notin @("pion", "pion.cmd", "pion.ps1")) {
     return ""
   }
 
@@ -1116,8 +1116,8 @@ function Get-PiManagedInstallRootForCommand {
 function Select-PiManagedInstallDir {
   param([string]$ExistingPiPath)
 
-  if ($env:PI_MANAGED_INSTALL_ROOT) {
-    $managedRoot = [System.IO.Path]::GetFullPath($env:PI_MANAGED_INSTALL_ROOT)
+  if ($env:PION_MANAGED_INSTALL_ROOT) {
+    $managedRoot = [System.IO.Path]::GetFullPath($env:PION_MANAGED_INSTALL_ROOT)
     if (Test-PiManagedInstallMarker $managedRoot) {
       return $managedRoot
     }
@@ -1140,12 +1140,12 @@ function Get-NpmUninstallPiCommand {
 
 function Write-PiInstallCommand {
   if ($env:PI_LEGACY_NPM_MIGRATION -eq "1") {
-    $piCommand = Join-Path $env:PI_MANAGED_BIN_DIR "pi.cmd"
-    return "Pi will install to $piCommand, then remove the npm package:`n  $(Get-NpmUninstallPiCommand)"
+    $piCommand = Join-Path $env:PI_MANAGED_BIN_DIR "pion.cmd"
+    return "Pion will install to $piCommand, then remove the npm package:`n  $(Get-NpmUninstallPiCommand)"
   }
   if (Test-PiManagedInstallEnabled) {
-    $piCommand = Join-Path $env:PI_MANAGED_BIN_DIR "pi.cmd"
-    return "Pi will install to $piCommand"
+    $piCommand = Join-Path $env:PI_MANAGED_BIN_DIR "pion.cmd"
+    return "Pion will install to $piCommand"
   }
   if ($env:PI_NPM_INSTALL_PREFIX) {
     return "Using legacy self managed installation`n  npm.cmd install -g --ignore-scripts $NpmMinReleaseAgeArg --prefix `"$env:PI_NPM_INSTALL_PREFIX`" $PiPackageSpec"
@@ -1172,20 +1172,20 @@ function Write-PiActionMenu {
   }
 
   if ($ExistingPiPath) {
-    Write-Host "${bold}Pi is already installed at:${reset}"
+    Write-Host "${bold}Pion is already installed at:${reset}"
     Write-Host ""
     Write-Host "  $ExistingPiPath"
     Write-Host ""
   }
 
   if ($env:PI_NPM_INSTALL_PREFIX) {
-    Write-Host "npm's global directory is not writable; Pi will be installed under $env:PI_NPM_INSTALL_PREFIX."
+    Write-Host "npm's global directory is not writable; Pion will be installed under $env:PI_NPM_INSTALL_PREFIX."
     Write-Host ""
   }
 
   if ($env:PI_LEGACY_NPM_MIGRATION -eq "1") {
-    Write-Host "This Pi was installed with npm. Pi now uses a managed installation"
-    Write-Host "that pins all dependencies and updates itself with: pi update"
+    Write-Host "This Pion was installed with npm. Pion now uses a managed installation"
+    Write-Host "that pins all dependencies and updates itself with: pion update"
     Write-Host ""
     Write-Host "${bold}Migration:${reset}"
   } elseif (Test-PiManagedInstallEnabled) {
@@ -1206,13 +1206,13 @@ function Write-PiActionMenu {
   Write-Host "${bold}Choose an action:${reset}"
   Write-Host ""
   if ($env:PI_LEGACY_NPM_MIGRATION -eq "1") {
-    Write-Host ("  {0}{1,-4}{2} {3}Migrate Pi to a managed installation{2} {4}(default){2}" -f $cyan, "y", $reset, $green, $dim)
-    Write-Host ("  {0}{1,-4}{2} {3}Uninstall Pi{2}" -f $cyan, "u", $reset, $red)
+    Write-Host ("  {0}{1,-4}{2} {3}Migrate Pion to a managed installation{2} {4}(default){2}" -f $cyan, "y", $reset, $green, $dim)
+    Write-Host ("  {0}{1,-4}{2} {3}Uninstall Pion{2}" -f $cyan, "u", $reset, $red)
   } elseif ($ExistingPiPath) {
-    Write-Host ("  {0}{1,-4}{2} {3}Reinstall Pi{2} {4}(default){2}" -f $cyan, "y", $reset, $green, $dim)
-    Write-Host ("  {0}{1,-4}{2} {3}Uninstall Pi{2}" -f $cyan, "u", $reset, $red)
+    Write-Host ("  {0}{1,-4}{2} {3}Reinstall Pion{2} {4}(default){2}" -f $cyan, "y", $reset, $green, $dim)
+    Write-Host ("  {0}{1,-4}{2} {3}Uninstall Pion{2}" -f $cyan, "u", $reset, $red)
   } else {
-    Write-Host ("  {0}{1,-4}{2} {3}Install Pi{2} {4}(default){2}" -f $cyan, "y", $reset, $green, $dim)
+    Write-Host ("  {0}{1,-4}{2} {3}Install Pion{2} {4}(default){2}" -f $cyan, "y", $reset, $green, $dim)
   }
   Write-Host ("  {0}{1,-4}{2} {3}Do nothing{2}" -f $cyan, "n", $reset, $dim)
 }
@@ -1247,10 +1247,10 @@ function Write-PiActionSelection {
   param([string]$Action)
 
   switch ($Action) {
-    "install" { $message = "Will install Pi." }
-    "reinstall" { $message = "Will reinstall Pi." }
-    "migrate" { $message = "Will migrate Pi to a managed installation." }
-    "uninstall" { $message = "Will uninstall Pi." }
+    "install" { $message = "Will install Pion." }
+    "reinstall" { $message = "Will reinstall Pion." }
+    "migrate" { $message = "Will migrate Pion to a managed installation." }
+    "uninstall" { $message = "Will uninstall Pion." }
     "none" { $message = "Chose to do nothing. Exiting." }
   }
   Write-Host ""
@@ -1402,13 +1402,13 @@ function Receive-PiManagedInstallArtifacts {
   }
 
   $packageJsonPath = Join-Path $ManagedStageDir "package.json"
-  Write-Host "Downloading managed installer package.json for Pi $managedVersion"
+  Write-Host "Downloading managed installer package.json for Pion $managedVersion"
   if (-not (Invoke-DownloadManagedInstallerArtifact "$PiInstallerDownloadBase/v$managedVersion/package.json" $packageJsonPath "package.json")) {
     return $false
   }
 
   $packageLockPath = Join-Path $ManagedStageDir "package-lock.json"
-  Write-Host "Downloading managed installer package-lock.json for Pi $managedVersion"
+  Write-Host "Downloading managed installer package-lock.json for Pion $managedVersion"
   if (-not (Invoke-DownloadManagedInstallerArtifact "$PiInstallerDownloadBase/v$managedVersion/package-lock.json" $packageLockPath "package-lock.json")) {
     return $false
   }
@@ -1433,12 +1433,12 @@ function Write-PiManagedInstallMarker {
   param([string]$ManagedRoot, [string]$ManagedBinDir)
 
   $marker = [ordered]@{
-    kind = "pi-managed-install"
+    kind = "pion-managed-install"
     schemaVersion = 1
     layout = "releases-v1"
     entrypoint = [ordered]@{
       type = "script"
-      path = Join-Path $ManagedBinDir "pi.cmd"
+      path = Join-Path $ManagedBinDir "pion.cmd"
     }
   }
   $markerJson = ($marker | ConvertTo-Json -Depth 5) + "`r`n"
@@ -1451,13 +1451,13 @@ function Write-PiManagedLaunchers {
   $managedBinDir = Join-Path $ManagedAgentDir "bin"
   New-Item -ItemType Directory -Force -Path $managedBinDir | Out-Null
 
-  $launcherJsPath = Join-Path $managedBinDir "pi-launcher.js"
-  $shellLauncherPath = Join-Path $managedBinDir "pi"
-  $cmdLauncherPath = Join-Path $managedBinDir "pi.cmd"
-  $powerShellLauncherPath = Join-Path $managedBinDir "pi.ps1"
+  $launcherJsPath = Join-Path $managedBinDir "pion-launcher.js"
+  $shellLauncherPath = Join-Path $managedBinDir "pion"
+  $cmdLauncherPath = Join-Path $managedBinDir "pion.cmd"
+  $powerShellLauncherPath = Join-Path $managedBinDir "pion.ps1"
   foreach ($launcherPath in @($launcherJsPath, $shellLauncherPath, $cmdLauncherPath, $powerShellLauncherPath)) {
     if ((Test-Path $launcherPath) -and (-not (Test-Path $launcherPath -PathType Leaf))) {
-      throw "Managed Pi launcher path is not a file: $launcherPath"
+      throw "Managed Pion launcher path is not a file: $launcherPath"
     }
   }
 
@@ -1473,7 +1473,7 @@ const installRoot = path.join(agentDir, "install");
 const currentFile = path.join(installRoot, "current-version");
 const currentVersion = fs.readFileSync(currentFile, "utf8").trim();
 if (!currentVersion || currentVersion === "." || currentVersion === ".." || !/^[0-9A-Za-z._+-]+$/.test(currentVersion)) {
-	throw new Error(`Managed Pi version file is invalid: ${currentFile}`);
+	throw new Error(`Managed Pion version file is invalid: ${currentFile}`);
 }
 
 const releaseDir = path.join(installRoot, "releases", currentVersion);
@@ -1486,12 +1486,12 @@ if (!binPath) {
 const cliPath = path.resolve(packageDir, binPath);
 const cliRelative = path.relative(packageDir, cliPath);
 if (cliRelative.startsWith("..") || path.isAbsolute(cliRelative) || !fs.statSync(cliPath).isFile()) {
-	throw new Error(`Managed Pi executable is invalid: ${cliPath}`);
+	throw new Error(`Managed Pion executable is invalid: ${cliPath}`);
 }
 
 const result = spawnSync(process.execPath, [cliPath, ...process.argv.slice(2)], {
 	stdio: "inherit",
-	env: { ...process.env, PI_MANAGED_INSTALL_ROOT: installRoot },
+	env: { ...process.env, PION_MANAGED_INSTALL_ROOT: installRoot },
 });
 if (result.error) throw result.error;
 process.exit(result.status ?? 1);
@@ -1500,12 +1500,12 @@ process.exit(result.status ?? 1);
   $launcherJs = $launcherJs.Replace("__PI_COMMAND__", ($PiCmd | ConvertTo-Json -Compress))
   # Remember whether this install used standalone Node. A new Windows shell
   # puts machine PATH first, so PATH alone cannot preserve that choice.
-  $standaloneNode = Join-Path $env:LOCALAPPDATA "pi-node\current\node.exe"
+  $standaloneNode = Join-Path $env:LOCALAPPDATA "pion-node\current\node.exe"
   $shellNodeSetup = 'node=node'
   $cmdNodeSetup = 'SET "node=node"'
   $powerShellNodeSetup = '$node="node"'
   if ((Get-Command node).Source -eq $standaloneNode) {
-    # Fall back only if the executable was removed, never on a Pi failure.
+    # Fall back only if the executable was removed, never on a Pion failure.
     $shellNodeSetup = @'
 node='__PI_STANDALONE_NODE__'
 if [ ! -f "$node" ]; then
@@ -1516,11 +1516,11 @@ fi
     $shellNodeSetup = $shellNodeSetup.Replace("__PI_STANDALONE_NODE__", $standaloneNode.Replace("\", "/").Replace("'", "'\''"))
     $cmdNodeSetup = @'
 SET "node=node"
-IF EXIST "%LOCALAPPDATA%\pi-node\current\node.exe" SET "node=%LOCALAPPDATA%\pi-node\current\node.exe"
+IF EXIST "%LOCALAPPDATA%\pion-node\current\node.exe" SET "node=%LOCALAPPDATA%\pion-node\current\node.exe"
 '@
     $powerShellNodeSetup = @'
 $node="node"
-$standaloneNode=Join-Path $env:LOCALAPPDATA "pi-node/current/node.exe"
+$standaloneNode=Join-Path $env:LOCALAPPDATA "pion-node/current/node.exe"
 if (Test-Path $standaloneNode -PathType Leaf) {
   $node=$standaloneNode
 }
@@ -1531,13 +1531,13 @@ if (Test-Path $standaloneNode -PathType Leaf) {
 #!/bin/sh
 basedir=$(dirname "$(echo "$0" | sed -e 's,\\,/,g')")
 __PI_NODE_SETUP__
-# A successful exec replaces this shell, so Pi exit codes never run this trap.
+# A successful exec replaces this shell, so Pion exit codes never run this trap.
 trap 'status=$?
 if [ "$status" -eq 127 ]; then
-  printf "%s\n" "Pi could not find Node.js. Install Node.js 22.19.0 or newer, or rerun the installer at https://pi.dev." >&2
+  printf "%s\n" "Pion could not find Node.js. Install Node.js 22.19.0 or newer, or rerun the installer at https://pion.dev." >&2
 fi
 exit "$status"' 0
-exec "$node" "$basedir/pi-launcher.js" "$@"
+exec "$node" "$basedir/pion-launcher.js" "$@"
 '@
   $shellLauncher = $shellLauncher.Replace("__PI_NODE_SETUP__", $shellNodeSetup)
   $cmdLauncher = @'
@@ -1554,14 +1554,14 @@ IF "%pi_exit_code%"=="9009" (
 )
 EXIT /B %pi_exit_code%
 :node_missing
-ECHO Pi could not find Node.js. Install Node.js 22.19.0 or newer, or rerun the installer at https://pi.dev. 1>&2
+ECHO Pion could not find Node.js. Install Node.js 22.19.0 or newer, or rerun the installer at https://pion.dev. 1>&2
 EXIT /B %pi_exit_code%
 '@
   $cmdLauncher = $cmdLauncher.Replace("__PI_NODE_SETUP__", $cmdNodeSetup)
   $powerShellLauncher = @'
 #!/usr/bin/env pwsh
 $basedir=Split-Path $MyInvocation.MyCommand.Definition -Parent
-$launcher=Join-Path $basedir "pi-launcher.js"
+$launcher=Join-Path $basedir "pion-launcher.js"
 __PI_NODE_SETUP__
 try {
   if ($MyInvocation.ExpectingInput) {
@@ -1570,7 +1570,7 @@ try {
     & $node $launcher $args
   }
 } catch [System.Management.Automation.CommandNotFoundException] {
-  [Console]::Error.WriteLine("Pi could not find Node.js. Install Node.js 22.19.0 or newer, or rerun the installer at https://pi.dev.")
+  [Console]::Error.WriteLine("Pion could not find Node.js. Install Node.js 22.19.0 or newer, or rerun the installer at https://pion.dev.")
   exit 127
 }
 exit $LASTEXITCODE
@@ -1600,7 +1600,7 @@ function Invoke-PiManagedInstall {
   if (($env:PI_INSTALL_ACTION -ne "migrate") -and $env:PI_EXISTING_PATH) {
     $existingRoot = Get-PiManagedInstallRootForCommand $env:PI_EXISTING_PATH
     if ((-not $existingRoot) -or ($existingRoot -ne $managedRoot)) {
-      Write-Host "Managed install refused to replace Pi at $env:PI_EXISTING_PATH. Uninstall it first."
+      Write-Host "Managed install refused to replace Pion at $env:PI_EXISTING_PATH. Uninstall it first."
       $global:LASTEXITCODE = 1
       return
     }
@@ -1612,12 +1612,12 @@ function Invoke-PiManagedInstall {
   }
 
   $managedBinDir = Join-Path $managedAgentDir "bin"
-  $managedLauncher = Join-Path $managedBinDir "pi.cmd"
+  $managedLauncher = Join-Path $managedBinDir "pion.cmd"
   $launcherPaths = @(
-    (Join-Path $managedBinDir "pi"),
+    (Join-Path $managedBinDir "pion"),
     $managedLauncher,
-    (Join-Path $managedBinDir "pi.ps1"),
-    (Join-Path $managedBinDir "pi-launcher.js")
+    (Join-Path $managedBinDir "pion.ps1"),
+    (Join-Path $managedBinDir "pion-launcher.js")
   )
   if (($launcherPaths | Where-Object { Test-Path $_ } | Select-Object -First 1) -and (-not (Test-PiManagedInstallMarker $managedRoot))) {
     Write-Host "Refusing to replace the unrecognized executable at $managedLauncher."
@@ -1639,7 +1639,7 @@ function Invoke-PiManagedInstall {
     }
     $managedVersion = $global:PiManagedVersion
 
-    Write-Host "Installing managed Pi dependencies"
+    Write-Host "Installing managed Pion dependencies"
     $npmArgs = @("ci", "--ignore-scripts", $NpmMinReleaseAgeArg, "--omit=dev", "--include=optional", "--no-fund", "--no-audit", "--loglevel=$LogLevel", "--progress=false")
     Push-Location $managedStageDir
     # Windows PowerShell promotes redirected native stderr to error records. npm
@@ -1658,14 +1658,14 @@ function Invoke-PiManagedInstall {
       return
     }
 
-    $managedStagedBin = Join-Path $managedStageDir "node_modules\.bin\pi.cmd"
+    $managedStagedBin = Join-Path $managedStageDir "node_modules\.bin\pion.cmd"
     if (-not (Test-Path $managedStagedBin -PathType Leaf)) {
-      Write-Host "Managed Pi executable was not created by npm ci."
+      Write-Host "Managed Pion executable was not created by npm ci."
       $global:LASTEXITCODE = 1
       return
     }
 
-    Write-Host "Verifying managed Pi $managedVersion"
+    Write-Host "Verifying managed Pion $managedVersion"
     $managedInstalledVersion = & $managedStagedBin --version
     $managedStatus = $LASTEXITCODE
     if ($managedStatus -ne 0) {
@@ -1674,20 +1674,20 @@ function Invoke-PiManagedInstall {
     }
     $managedInstalledVersion = ("$managedInstalledVersion").Trim()
     if ($managedInstalledVersion -ne $managedVersion) {
-      Write-Host "Managed Pi smoke test returned version $managedInstalledVersion; expected $managedVersion."
+      Write-Host "Managed Pion smoke test returned version $managedInstalledVersion; expected $managedVersion."
       $global:LASTEXITCODE = 1
       return
     }
 
     $managedReleaseDir = Join-Path $managedReleasesRoot $managedVersion
-    Write-Host "Activating managed Pi $managedVersion"
+    Write-Host "Activating managed Pion $managedVersion"
     if (Test-Path $managedReleaseDir -PathType Container) {
       Remove-Item $managedStageDir -Recurse -Force
     } else {
       Move-Item $managedStageDir $managedReleaseDir
     }
 
-    # Remove the npm-installed Pi only after the managed release is verified, so
+    # Remove the npm-installed Pion only after the managed release is verified, so
     # a failed download or npm ci leaves the existing installation working.
     if ($env:PI_INSTALL_ACTION -eq "migrate") {
       Remove-PiLegacyNpmInstall
@@ -1700,7 +1700,7 @@ function Invoke-PiManagedInstall {
     Write-PiManagedLaunchers $managedAgentDir
     Write-PiManagedCurrentVersion $managedRoot $managedVersion
     $global:LASTEXITCODE = 0
-    Write-Host "Managed Pi install complete"
+    Write-Host "Managed Pion install complete"
   } finally {
     Remove-Item $managedStageDir -Recurse -Force -ErrorAction SilentlyContinue
   }
@@ -1717,7 +1717,7 @@ function Invoke-PiInstall {
 }
 
 function Install-PiPackageWithProgress {
-  $logFile = Join-Path ([System.IO.Path]::GetTempPath()) "pi-installer-npm-$PID.log"
+  $logFile = Join-Path ([System.IO.Path]::GetTempPath()) "pion-installer-npm-$PID.log"
   Remove-Item $logFile -Force -ErrorAction SilentlyContinue
   New-Item -ItemType File -Path $logFile -Force | Out-Null
 
@@ -1799,7 +1799,7 @@ function Install-PiPackageWithProgress {
       $label = Get-NpmInstallProgressLabel $logFile $label
     }
     if (($frame -ne $lastFrame) -or ($label -ne $lastLabel)) {
-      Write-InstallProgress $step $frame $label "Installing Pi"
+      Write-InstallProgress $step $frame $label "Installing Pion"
       $lastFrame = $frame
       $lastLabel = $label
     }
@@ -1851,15 +1851,15 @@ function Invoke-NpmUninstallPi {
 }
 
 function Remove-PiLegacyNpmInstall {
-  Write-Host "Removing npm-installed Pi"
+  Write-Host "Removing npm-installed Pion"
   Invoke-NpmUninstallPi
   if ($LASTEXITCODE -ne 0) {
-    Write-Host "npm uninstall failed. Close any running pi processes and run this installer again."
+    Write-Host "npm uninstall failed. Close any running pion processes and run this installer again."
     $global:LASTEXITCODE = 1
     return
   }
   if (Test-Path $env:PI_EXISTING_PATH) {
-    Write-Host "npm uninstall finished, but pi is still present at $env:PI_EXISTING_PATH."
+    Write-Host "npm uninstall finished, but pion is still present at $env:PI_EXISTING_PATH."
     $global:LASTEXITCODE = 1
     return
   }
@@ -1872,7 +1872,7 @@ function Assert-PiLegacyNpmInstallRemovable {
     return
   }
 
-  Write-Host "npm's global directory is not writable, so the npm-installed Pi at $env:PI_EXISTING_PATH cannot be removed."
+  Write-Host "npm's global directory is not writable, so the npm-installed Pion at $env:PI_EXISTING_PATH cannot be removed."
   Write-Host "Remove it from an elevated terminal, then run this installer again:"
   Write-Host ""
   Write-Host "  $(Get-NpmUninstallPiCommand)"
@@ -1899,7 +1899,7 @@ function Install-PiPackage {
   if (Test-InstallerAnsiOutput) {
     Install-PiPackageWithProgress
   } else {
-    Write-Host "Installing Pi..."
+    Write-Host "Installing Pion..."
     Write-Host ""
     Invoke-PiInstall "error"
     if ($LASTEXITCODE -ne 0) {
@@ -1911,16 +1911,16 @@ function Install-PiPackage {
 function Uninstall-PiPackage {
   $managedRoot = Get-PiManagedInstallRootForCommand $env:PI_EXISTING_PATH
   if ($managedRoot) {
-    Write-Host "Uninstalling managed Pi..."
+    Write-Host "Uninstalling managed Pion..."
     Write-Host ""
     $managedAgentDir = Split-Path $managedRoot -Parent
     $managedBinDir = Join-Path $managedAgentDir "bin"
-    Remove-Item (Join-Path $managedBinDir "pi"), (Join-Path $managedBinDir "pi.cmd"), (Join-Path $managedBinDir "pi.ps1"), (Join-Path $managedBinDir "pi-launcher.js") -Force -ErrorAction SilentlyContinue
+    Remove-Item (Join-Path $managedBinDir "pion"), (Join-Path $managedBinDir "pion.cmd"), (Join-Path $managedBinDir "pion.ps1"), (Join-Path $managedBinDir "pion-launcher.js") -Force -ErrorAction SilentlyContinue
     Remove-Item $managedRoot -Recurse -Force
 
     if (Test-Path $env:PI_EXISTING_PATH) {
       Write-Host ""
-      Write-Host "Managed uninstall finished, but pi is still present at:"
+      Write-Host "Managed uninstall finished, but pion is still present at:"
       Write-Host ""
       Write-Host "  $env:PI_EXISTING_PATH"
       exit 1
@@ -1929,7 +1929,7 @@ function Uninstall-PiPackage {
   }
 
   if (-not (Test-NpmPackageInstalledForUninstall)) {
-    Write-Host "I found pi at:"
+    Write-Host "I found pion at:"
     Write-Host ""
     Write-Host "  $env:PI_EXISTING_PATH"
     Write-Host ""
@@ -1938,7 +1938,7 @@ function Uninstall-PiPackage {
     exit 1
   }
 
-  Write-Host "Uninstalling Pi..."
+  Write-Host "Uninstalling Pion..."
   Write-Host ""
   Invoke-NpmUninstallPi
   if ($LASTEXITCODE -ne 0) {
@@ -1947,7 +1947,7 @@ function Uninstall-PiPackage {
 
   if ((Test-Path $env:PI_EXISTING_PATH) -or (Test-Path $env:PI_EXISTING_PATH -PathType Leaf)) {
     Write-Host ""
-    Write-Host "npm uninstall finished, but pi is still present at:"
+    Write-Host "npm uninstall finished, but pion is still present at:"
     Write-Host ""
     Write-Host "  $env:PI_EXISTING_PATH"
     exit 1
@@ -1968,9 +1968,9 @@ function Write-PiNotOnPathMessage {
   $piBinDir = Get-PiBinDir
   $activePi = Get-Command $PiCmd -ErrorAction SilentlyContinue
 
-  Write-Host "Pi was installed, but your shell is not using that install yet."
+  Write-Host "Pion was installed, but your shell is not using that install yet."
   if ($activePi) {
-    Write-Host "Your shell currently resolves pi to: $($activePi.Source)"
+    Write-Host "Your shell currently resolves pion to: $($activePi.Source)"
   }
 
   if ($piBinDir) {
@@ -1979,7 +1979,7 @@ function Write-PiNotOnPathMessage {
       Add-UserPathEntry $piBinDir -Prepend
       Write-Host "Added $piBinDir to your user PATH."
     }
-    Write-Host "Restart your shell, then run: pi"
+    Write-Host "Restart your shell, then run: pion"
   } else {
     Write-Host "Check npm's global prefix with: npm prefix -g"
     Write-Host "Then add that directory to your PATH."
@@ -2062,7 +2062,7 @@ function Invoke-PiInstaller {
   if ($action -eq "uninstall") {
     Uninstall-PiPackage
     Write-Host ""
-    Write-Host "Pi was uninstalled successfully."
+    Write-Host "Pion was uninstalled successfully."
     exit 0
   }
   if ($action -eq "none") {
@@ -2090,20 +2090,20 @@ function Invoke-PiInstaller {
   Remove-BlockedPiPowerShellShim
   Write-Host ""
   if ($action -eq "migrate") {
-    Write-Host "Pi was migrated to a managed installation successfully."
+    Write-Host "Pion was migrated to a managed installation successfully."
   } elseif ($action -eq "reinstall") {
-    Write-Host "Pi was reinstalled successfully."
+    Write-Host "Pion was reinstalled successfully."
   } else {
-    Write-Host "Pi was installed successfully."
+    Write-Host "Pion was installed successfully."
   }
   if (Test-PiManagedInstallEnabled) {
     Write-Host ""
-    Write-Host "Update Pi later with: pi update"
+    Write-Host "Update Pion later with: pion update"
   }
 
   if (Test-InstalledPiIsFirstOnPath) {
     Write-Host ""
-    Write-Host "Run it with: pi"
+    Write-Host "Run it with: pion"
   } else {
     Write-Host ""
     Write-PiNotOnPathMessage

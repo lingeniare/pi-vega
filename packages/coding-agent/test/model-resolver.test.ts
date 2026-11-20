@@ -804,7 +804,7 @@ describe("default model selection", () => {
 		});
 
 		async function createSession(options: { scoped: boolean; persistedScope?: string[] }) {
-			const tempDir = join(tmpdir(), `pi-default-scope-${Date.now()}-${Math.random().toString(36).slice(2)}`);
+			const tempDir = join(tmpdir(), `pion-default-scope-${Date.now()}-${Math.random().toString(36).slice(2)}`);
 			mkdirSync(tempDir, { recursive: true });
 			tempDirs.push(tempDir);
 

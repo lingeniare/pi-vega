@@ -41,7 +41,7 @@
       apps = forAllSystems (system: {
         default = {
           type = "app";
-          program = "${self.packages.${system}.default}/bin/pi";
+          program = "${self.packages.${system}.default}/bin/pion";
           meta.description = "Pi coding agent";
         };
         pi = self.apps.${system}.default;

@@ -3,7 +3,7 @@
 </p>
 <p align="center">
   <a href="https://vega.codes">
-    <img alt="Pi + VEGA" src="cover.webp">
+    <img alt="pion + VEGA" src="cover.webp">
   </a>
 </p>
 <p align="center">
@@ -14,7 +14,7 @@
   <a href="LICENSE"><img alt="MIT" src="https://img.shields.io/badge/license-MIT-22C55E?style=flat-square" /></a>
 </p>
 
-# Pi + VEGA
+# pion + VEGA
 
 A fork of [Pi](https://github.com/earendil-works/pi) — the minimal, extensible AI agent for your terminal. The same Pi, made simpler for developers in Russia.
 
@@ -28,7 +28,7 @@ A fork of [Pi](https://github.com/earendil-works/pi) — the minimal, extensible
 
 ## Installation
 
-Installer (managed install with pinned dependencies and `pi update`):
+Installer (managed install with pinned dependencies and `pion update`):
 
 ```bash
 curl -fsSL https://github.com/lingeniare/pi-vega/releases/latest/download/install.sh | sh
@@ -45,7 +45,7 @@ npm install -g --ignore-scripts https://github.com/lingeniare/pi-vega/releases/l
 # or: pnpm add -g / bun add -g — same URL
 ```
 
-Releases and all install artifacts live on [GitHub Releases](https://github.com/lingeniare/pi-vega/releases). To update, run `pi update` (managed installs) or rerun the installer.
+Releases and all install artifacts live on [GitHub Releases](https://github.com/lingeniare/pi-vega/releases). To update, run `pion update` (managed installs) or rerun the installer.
 
 From source, for development:
 
@@ -59,14 +59,14 @@ npm run build
 Run from source:
 
 ```bash
-./pi-test.sh    # Linux / macOS
-pi-test.bat     # Windows
+./pion-test.sh    # Linux / macOS
+pion-test.bat     # Windows
 ```
 
 Sign in to VEGA and pick a model:
 
 ```bash
-pi
+pion
 /login   # → Sign in with VEGA → enter the code at api.vega.chat/device
 /model   # → pick a vega/<id> model
 ```
@@ -74,7 +74,7 @@ pi
 You can also paste the key manually (`/login` → API key → `sk-apivega-...`) or set the `VEGA_API_KEY` env var.
 
 <p>
-  <a href="https://pi.dev/docs/latest/settings#network-and-retries"><img alt="Pi docs" src="https://img.shields.io/badge/Pi-Documentation-1F2937?style=for-the-badge" /></a>
+  <a href="packages/coding-agent/docs"><img alt="pion docs" src="https://img.shields.io/badge/Pion-Documentation-1F2937?style=for-the-badge" /></a>
   <a href="https://vega.codes"><img alt="vega.codes" src="https://img.shields.io/badge/vega.codes-main_project-6E56CF?style=for-the-badge" /></a>
   <a href="https://api.vega.chat"><img alt="api.vega.chat" src="https://img.shields.io/badge/api.vega.chat-AI_provider-0EA5E9?style=for-the-badge" /></a>
 </p>
@@ -89,7 +89,7 @@ The project is open: issues and pull requests are welcome.
 
 - Telegram: [@ingeniare](https://t.me/ingeniare) — questions, bugs, ideas
 - Email: [mail@vega.chat](mailto:mail@vega.chat)
-- Pi docs: [pi.dev/docs](https://pi.dev/docs/latest) — fully applies to the fork
+- Docs: [packages/coding-agent/docs](packages/coding-agent/docs) — plus [upstream docs](https://github.com/earendil-works/pi/tree/main/docs)
 - Upstream: [earendil-works/pi](https://github.com/earendil-works/pi) — the fork stays in sync with it
 
 ## What is Pi

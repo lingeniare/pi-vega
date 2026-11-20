@@ -3,9 +3,9 @@ import { PI_AI_VERSION } from "./version.ts";
 
 /**
  * The `User-Agent` sent to providers:
- * - `"detailed"`: `pi/<version> (<platform>; <runtime>/<runtime version>; <arch>)`, or `pi/<version> (browser)`
+ * - `"detailed"`: `pion/<version> (<platform>; <runtime>/<runtime version>; <arch>)`, or `pion/<version> (browser)`
  *   outside Node.js and Bun.
- * - `"short"`: `pi`.
+ * - `"short"`: `pion`.
  * - `{ custom }`: the given value.
  */
 export type UserAgentMode = "short" | "detailed" | { custom: string };
@@ -20,8 +20,12 @@ export interface ClientAttribution {
 	categories?: string[];
 }
 
-/** pi's attribution, used by pi-agent-core, pi-durable, and the coding agent. */
-export const PI_ATTRIBUTION: ClientAttribution = { name: "pi", url: "https://pi.dev", categories: ["cli-agent"] };
+/** pion's attribution, used by pi-agent-core, pi-durable, and the coding agent. */
+export const PI_ATTRIBUTION: ClientAttribution = {
+	name: "pion",
+	url: "https://vega.codes",
+	categories: ["cli-agent"],
+};
 
 /**
  * How pi-ai identifies the calling app to providers. Every field is optional; absent fields use pi-ai's defaults:
@@ -75,8 +79,8 @@ function runtimeDescription(): string | undefined {
 export function formatUserAgent(identity?: ClientIdentity): string {
 	const mode = identity?.userAgent ?? "detailed";
 	if (typeof mode === "object") return mode.custom;
-	if (mode === "short") return "pi";
-	const product = `pi/${getClientVersion(identity)}`;
+	if (mode === "short") return "pion";
+	const product = `pion/${getClientVersion(identity)}`;
 	const runtime = runtimeDescription();
 	return runtime ? `${product} (${process.platform}; ${runtime}; ${process.arch})` : `${product} (browser)`;
 }

@@ -30,13 +30,13 @@ const oauthCredential = {
 	expires: Date.now() + 3_600_000,
 } as const;
 
-describe("pi auth logout", () => {
+describe("pion auth logout", () => {
 	test("requires exactly one provider", async () => {
 		const { errors, run } = await setup({});
 		for (const args of [[], ["--api-key"], ["radius", "extra"]]) {
 			errors.length = 0;
 			expect(await run(args)).toBe(1);
-			expect(errors).toEqual(["Usage: pi auth logout <provider>"]);
+			expect(errors).toEqual(["Usage: pion auth logout <provider>"]);
 		}
 	});
 

@@ -323,10 +323,10 @@ export class TuiMainScreen extends TuiBase implements TUI {
 			this.previousHeight = height;
 		};
 
-		const redrawLogDirectory = process.env.PI_TUI_DEBUG_REDRAW === "1" ? this.logDirectory : undefined;
+		const redrawLogDirectory = process.env.PION_TUI_DEBUG_REDRAW === "1" ? this.logDirectory : undefined;
 		const logRedraw = (reason: string): void => {
 			if (redrawLogDirectory === undefined) return;
-			const logPath = path.join(redrawLogDirectory, "pi-tui-debug.log");
+			const logPath = path.join(redrawLogDirectory, "pion-tui-debug.log");
 			const msg = `[${new Date().toISOString()}] fullRender: ${reason} (prev=${this.previousLines.length}, new=${newLines.length}, height=${height})\n`;
 			fs.mkdirSync(path.dirname(logPath), { recursive: true });
 			fs.appendFileSync(logPath, msg);
@@ -571,7 +571,7 @@ export class TuiMainScreen extends TuiBase implements TUI {
 
 		output.append("\x1b[?2026l"); // End synchronized output
 
-		if (process.env.PI_TUI_DEBUG === "1") {
+		if (process.env.PION_TUI_DEBUG === "1") {
 			const debugDir = "/tmp/tui";
 			fs.mkdirSync(debugDir, { recursive: true });
 			const debugPath = path.join(debugDir, `render-${Date.now()}-${Math.random().toString(36).slice(2)}.log`);

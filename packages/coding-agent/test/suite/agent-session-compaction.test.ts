@@ -282,7 +282,7 @@ describe("AgentSession compaction characterization", () => {
 	it("throws when compacting without configured auth", async () => {
 		const harness = await createHarness({ withConfiguredAuth: false });
 		harnesses.push(harness);
-		// Auth is resolved only when Pi summarizes itself, after checking there is something to compact.
+		// Auth is resolved only when Pion summarizes itself, after checking there is something to compact.
 		seedCompactableSession(harness);
 
 		await expect(harness.session.compact()).rejects.toThrow(`No API key found for ${harness.getModel().provider}.`);
@@ -363,7 +363,7 @@ describe("AgentSession compaction characterization", () => {
 		expect(requestOptions?.transport).toBeUndefined();
 	});
 
-	it("persists usage from pi-generated manual compaction", async () => {
+	it("persists usage from pion-generated manual compaction", async () => {
 		const harness = await createHarness({ withConfiguredAuth: false });
 		harnesses.push(harness);
 		seedCompactableSession(harness);

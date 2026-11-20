@@ -28,7 +28,7 @@ describe("ModelRuntime classifiers", () => {
 	async function createRuntime(modelsJson?: object): Promise<ModelRuntime> {
 		let modelsPath: string | null = null;
 		if (modelsJson) {
-			const dir = mkdtempSync(join(tmpdir(), "pi-classifiers-"));
+			const dir = mkdtempSync(join(tmpdir(), "pion-classifiers-"));
 			tempDirs.push(dir);
 			modelsPath = join(dir, "models.json");
 			writeFileSync(modelsPath, JSON.stringify(modelsJson));

@@ -104,7 +104,7 @@ describe("RPC session replacement emits session_start once (#10470)", () => {
 	});
 
 	async function createRuntime(starts: string[]): Promise<AgentSessionRuntime> {
-		const tempDir = join(tmpdir(), `pi-10470-${Date.now()}-${Math.random().toString(36).slice(2)}`);
+		const tempDir = join(tmpdir(), `pion-10470-${Date.now()}-${Math.random().toString(36).slice(2)}`);
 		mkdirSync(tempDir, { recursive: true });
 
 		const faux = registerFauxProvider({ models: [{ id: "faux-1", reasoning: false }] });

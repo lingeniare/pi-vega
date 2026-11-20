@@ -29,7 +29,7 @@ interface Dirs {
 }
 
 function setup(): Dirs {
-	const tempRoot = realpathSync(mkdtempSync(join(tmpdir(), "pi-project-trust-saved-")));
+	const tempRoot = realpathSync(mkdtempSync(join(tmpdir(), "pion-project-trust-saved-")));
 	tempDirs.push(tempRoot);
 	const dirs = {
 		agentDir: join(tempRoot, "agent"),
@@ -88,7 +88,7 @@ async function probeProjectTrust(dirs: Dirs): Promise<boolean> {
 		],
 		{
 			cwd: dirs.projectDir,
-			env: { ...process.env, [ENV_AGENT_DIR]: dirs.agentDir, PI_OFFLINE: "1" },
+			env: { ...process.env, [ENV_AGENT_DIR]: dirs.agentDir, PION_OFFLINE: "1" },
 			stdio: ["ignore", "ignore", "pipe"],
 		},
 	);
