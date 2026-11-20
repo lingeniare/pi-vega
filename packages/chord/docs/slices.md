@@ -310,8 +310,9 @@ Left by the first part itself:
   says: the same life (across attempts, gone with the object), no document machinery in a read's adoption.
 - **Test files:** `store/read.ts`, `store/open-query.ts` and `store/page.ts` have no test file of their own; they
   are tested in `test/store/reads.test.ts`, `test/store/skip.test.ts` and `test/store/read-plan.test.ts`.
-  `state/framed.ts`, `host/query-reader.ts` and `host/read-declarations.ts` are tested through live queries and
-  lists (`test/host/query-reader.test.ts`, `list.test.ts`, `named-query.test.ts`).
+  `host/query-reader.ts` is tested through live queries and lists (`test/host/query-reader.test.ts`,
+  `list.test.ts`, `named-query.test.ts`); `state/framed.ts` and `host/read-declarations.ts` have their own since
+  (`test/state/framed.test.ts`, `test/host/read-declarations.test.ts`).
 - **`self.count` has no opt-in** (round 4's decision: the `counts` list is dropped; `slice-14.md` §3.1). Any reader
   may count any named query; the guide says what to count.
 - **A reader's arguments from a followed source or a native** are not available when it opens: readers open before

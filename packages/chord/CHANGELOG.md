@@ -12,6 +12,9 @@
 
 - `@earendil-works/chord/telemetry-ingest`: the telemetry recorder, the page and worker batches and objects, the ingest facet and the senders, for an app wiring telemetry into hosts of its own.
 - Named queries (slice 14, first part): a `local` contract lists them with `queries(Item, { name: argsSchema })`, the table's owner implements the member with `self.queries(table, { map, reads?, partnerReads? }, builders)`, and any object on the store's host reads one live with `self.liveQuery(namedQuery, args, { first })`, counts it with `self.count(namedQuery, args)` or reads a page with `namedQuery.page(...)`. Arguments may be a watchable.
+- `createHttp`'s `links.opened(request, principal, close)` gets a third argument, `close`, which terminates that link at once: an app closes the links of a credential it revoked.
+- `memberNames(contract, variant)`: the names of the state members, methods and event members of one variant of a contract's current version (`{ state, methods, events }`), for an app's helper that fills a view's implementation from a store's reference.
+- The types `Method`, `LiteralsSchema` and `HostKeyed` are exported: a contract's inferred type holds them (a method, a `oneOf(...)`, a keyed member with a host kind), so a package that emits declarations for its contracts can name them through Chord's entry point.
 - Lists: `self.list(name, [[namedQuery, args]], { first })` returns `{ value, more }`, a list a screen loads more of. Its pages lie between fixed bookmarks, so loaded rows stay live, `more` sends only the new rows, and a row that moves leaves no gap and no duplicate; a reload keeps the pages it had.
 - Column sets: `defineColumns(name, { columns, key, indexes? })` and `defineTable(..., { exposes })` let another plugin's query test `exists(Set, match, condition)`, `existsNode(Set, match, node)` or join one row with `query(Table).join(Set, match)`. `compile(Set, condition)` and `query(Table).whereNode(Set, node)` pass a condition as data (`whereNode` and `existsNode` take the node as `unknown` and check it). A table handle's `page` and `count` take a query with `exists` and refuse one with a join. `evolveTable` takes `{ exposes }`.
 - Telemetry counters `chord.query.probes`, `chord.query.skips` and `chord.query.rows`.
@@ -25,10 +28,13 @@
 
 ### Changed
 
+- The workers component's worker base is minified (whitespace and syntax; names kept): each worker holds less source text (p3's measurements: about 0.4 MiB less per bare worker, more with bundled SDKs).
 - A commit runs a live query again only when it can change it: the store indexes every live read by the tables it uses, whoever owns it, and a commit's step skips the reads its writes cannot affect, by the columns an `update` assigns or by one keyed probe. `self.query` is rebuilt over this; a `put` of a row outside a window costs one more statement (the probe) than before.
 
 ### Fixed
 
+- A watched derive that was read between two changes of its source in one commit published two frames, the first diffed from the value read in between; over a link that was the protocol error `member twice in one state`, which closed the link. It publishes one frame per commit now, diffed from the value before the commit.
+- A list or live query whose value was set several times in one commit (a list's row moving from one loaded page to another) published one frame per set; over a link that was two entries for one member in one state message, the protocol error `member twice in one state`, which closed the link. It publishes one frame per commit now: its last value, diffed from the value before the commit.
 - The workers component closes a worker's link when the worker exits, before it publishes the exit in `state` and before the address's next worker starts: a call the worker sent that was not handled yet is dropped and a running one is aborted, so nothing an exited worker reported is handled or commits after `state` says it is gone. Apps need no stale-worker check of their own.
 - The optional peer dependencies on `react`, `ws` and `esbuild` are ranges (`^19.3.0`, `^8.21.0`, `^0.28.2`), not exact versions: npm no longer refuses to install Chord in a project with another patch release of them, such as react 19.3.1 ([#12008](https://github.com/earendil-works/pi/issues/12008)).
 
